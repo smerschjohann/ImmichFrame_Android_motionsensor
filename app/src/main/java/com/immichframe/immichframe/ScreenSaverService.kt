@@ -2,9 +2,9 @@ package com.immichframe.immichframe
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.content.Intent
 import android.os.PowerManager
 import android.service.dreams.DreamService
+import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 
@@ -22,14 +22,14 @@ class ScreenSaverService : DreamService() {
         webView = findViewById(R.id.screensaver_webview)
         webView.webViewClient = WebViewClient()
         webView.settings.javaScriptEnabled = true
+        webView.settings.cacheMode = WebSettings.LOAD_NO_CACHE
         loadSavedUrl()
-
         acquireWakeLock()
     }
 
     private fun loadSavedUrl() {
         val sharedPreferences = getSharedPreferences("ImmichFramePrefs", MODE_PRIVATE)
-        val savedUrl = sharedPreferences.getString("webview_url", "https://www.example.com")
+        val savedUrl = sharedPreferences.getString("webview_url", getString(R.string.webview_url))
         if (savedUrl != null) {
             webView.loadUrl(savedUrl)
         }
@@ -43,7 +43,7 @@ class ScreenSaverService : DreamService() {
         super.onDetachedFromWindow()
         releaseWakeLock()
     }
-    fun acquireWakeLock() {
+    private fun acquireWakeLock() {
         if (wakeLock == null) {
             val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
             wakeLock = powerManager.newWakeLock(
@@ -51,7 +51,7 @@ class ScreenSaverService : DreamService() {
             wakeLock?.acquire(120 * 60 * 1000L)
         }
     }
-    fun releaseWakeLock() {
+    private fun releaseWakeLock() {
         wakeLock?.let {
             if (it.isHeld) {
                 it.release()

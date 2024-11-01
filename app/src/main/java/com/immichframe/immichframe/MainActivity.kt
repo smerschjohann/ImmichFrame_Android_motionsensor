@@ -10,6 +10,7 @@ import android.view.View
 import android.view.WindowInsets
 import android.view.WindowInsetsController
 import android.view.WindowManager
+import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.appcompat.app.AppCompatActivity
@@ -42,6 +43,7 @@ class MainActivity : AppCompatActivity() {
         webView = findViewById(R.id.main_web_view)
         webView.webViewClient = WebViewClient()
         webView.settings.javaScriptEnabled = true
+        webView.settings.cacheMode = WebSettings.LOAD_NO_CACHE
         loadSavedUrl()
 
         buttonQuit = findViewById(R.id.btn_quit)
@@ -59,7 +61,7 @@ class MainActivity : AppCompatActivity() {
     }
     private fun loadSavedUrl() {
         val sharedPreferences = getSharedPreferences("ImmichFramePrefs", MODE_PRIVATE)
-        val savedUrl = sharedPreferences.getString("webview_url", "https://www.example.com")
+        val savedUrl = sharedPreferences.getString("webview_url", getString(R.string.webview_url))
         if (savedUrl != null) {
             webView.loadUrl(savedUrl)
         }

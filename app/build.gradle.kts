@@ -5,6 +5,14 @@ plugins {
 }
 
 android {
+    signingConfigs {
+        create("Release") {
+            storeFile = file("D:\\Documents\\Programs\\Keystore\\3Rob3\\3Rob3.keystore")
+            storePassword = "!!55Jetta55!!"
+            keyAlias = "3rob3"
+            keyPassword = "!!55Jetta55!!"
+        }
+    }
     namespace = "com.immichframe.immichframe"
     compileSdk = 34
 
@@ -25,6 +33,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("Release")
         }
     }
     compileOptions {
