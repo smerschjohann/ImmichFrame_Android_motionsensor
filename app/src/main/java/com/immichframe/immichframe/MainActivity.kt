@@ -56,7 +56,6 @@ class MainActivity : AppCompatActivity() {
             val intent = Intent(this, SettingsActivity::class.java)
             settingsLauncher.launch(intent)
         }
-        //buttonSettings.requestFocus()
 
     }
     private fun loadSavedUrl() {

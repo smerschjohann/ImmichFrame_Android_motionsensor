@@ -8,6 +8,11 @@
         android:id="@+id/main_web_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
+    <!-- Transparent overlay to help make buttons clickable -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#00000000" />
 
     <Button
         android:id="@+id/btn_settings"
@@ -16,8 +21,8 @@
         android:layout_alignParentTop="true"
         android:layout_centerHorizontal="true"
         android:padding="50dp"
-        android:background="@android:color/transparent"
-        android:focusableInTouchMode="true"/>
+        android:background="@android:color/transparent" />
+
     <Button
         android:id="@+id/btn_quit"
         android:layout_width="wrap_content"
@@ -25,6 +30,5 @@
         android:layout_alignParentBottom="true"
         android:layout_centerHorizontal="true"
         android:padding="50dp"
-        android:background="@android:color/transparent"
-        android:focusableInTouchMode="true"/>
+        android:background="@android:color/transparent" />
 </RelativeLayout>

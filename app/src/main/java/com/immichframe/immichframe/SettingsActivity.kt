@@ -37,6 +37,8 @@ class SettingsActivity : AppCompatActivity() {
         val sharedPreferences = getSharedPreferences("ImmichFramePrefs", MODE_PRIVATE)
         val savedUrl = sharedPreferences.getString("webview_url", getString(R.string.webview_url))
         editTextUrl.setText(savedUrl)
+        editTextUrl.requestFocus()
+        editTextUrl.selectAll()
     }
 
     private fun saveUrl(url: String) {
