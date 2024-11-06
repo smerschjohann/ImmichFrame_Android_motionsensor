@@ -1,3 +1,5 @@
+import java.util.Properties
+import java.io.FileInputStream
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -7,10 +9,18 @@ plugins {
 android {
     signingConfigs {
         create("Release") {
-            storeFile = file("D:\\Documents\\Programs\\Keystore\\3Rob3\\3Rob3.keystore")
-            storePassword = "!!55Jetta55!!"
-            keyAlias = "3rob3"
-            keyPassword = "!!55Jetta55!!"
+            val propertiesFile = rootProject.file("signing.properties")
+            if (propertiesFile.exists()) {
+                val properties = Properties()
+                properties.load(FileInputStream(propertiesFile))
+
+                storeFile = file(properties["KEYSTORE_FILE"] as String)
+                storePassword = properties["KEYSTORE_PASSWORD"] as String
+                keyAlias = properties["KEY_ALIAS"] as String
+                keyPassword = properties["KEY_PASSWORD"] as String
+            } else {
+                println("Warning: signing.properties file not found!")
+            }
         }
     }
     namespace = "com.immichframe.immichframe"
