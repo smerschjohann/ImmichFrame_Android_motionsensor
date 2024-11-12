@@ -13,6 +13,7 @@ import android.view.WindowManager
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.webkit.WebResourceRequest
 import androidx.appcompat.app.AppCompatActivity
 import android.widget.Button
 import androidx.activity.result.contract.ActivityResultContracts
@@ -39,7 +40,19 @@ class MainActivity : AppCompatActivity() {
         hideSystemUI()
 
         webView = findViewById(R.id.main_web_view)
-        webView.webViewClient = WebViewClient()
+        //webView.settings.javaScriptEnabled = true
+        webView.webViewClient = object : WebViewClient() {
+            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                val url = request?.url
+                if (url != null) {
+                    // Open the URL in the default browser
+                    val intent = Intent(Intent.ACTION_VIEW, url)
+                    startActivity(intent)
+                    return true  // Indicate that you've handled the URL
+                }
+                return false  // Let WebView handle it if URL is null
+            }
+        }
         webView.settings.javaScriptEnabled = true
         webView.settings.cacheMode = WebSettings.LOAD_NO_CACHE
         loadSavedUrl()
