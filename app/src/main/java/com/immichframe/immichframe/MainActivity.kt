@@ -26,7 +26,7 @@ class MainActivity : AppCompatActivity() {
 
     private val settingsLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
-            loadSavedUrl()
+            loadSettings()
         }
     }
 
@@ -39,7 +39,11 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
         hideSystemUI()
 
+        buttonSettings = findViewById(R.id.btn_settings)
+        buttonQuit = findViewById(R.id.btn_quit)
+
         webView = findViewById(R.id.main_web_view)
+
         webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 val url = request?.url
@@ -54,29 +58,26 @@ class MainActivity : AppCompatActivity() {
         }
         webView.settings.javaScriptEnabled = true
         webView.settings.cacheMode = WebSettings.LOAD_NO_CACHE
-        loadSavedUrl()
+        loadSettings()
 
-        buttonQuit = findViewById(R.id.btn_quit)
         buttonQuit.setOnClickListener {
             finish()
             webView.requestFocus()
         }
 
         buttonQuit.setOnFocusChangeListener { _, hasFocus ->
-            buttonQuit.alpha = if (hasFocus) 1f else 0f
             if (hasFocus) {
                 buttonQuit.performClick()
             }
         }
 
-        buttonSettings = findViewById(R.id.btn_settings)
+
         buttonSettings.setOnClickListener {
             val intent = Intent(this, SettingsActivity::class.java)
             settingsLauncher.launch(intent)
             webView.requestFocus()
         }
         buttonSettings.setOnFocusChangeListener { _, hasFocus ->
-            buttonSettings.alpha = if (hasFocus) 1f else 0f
             if (hasFocus) {
                 buttonSettings.performClick()
             }
@@ -84,12 +85,18 @@ class MainActivity : AppCompatActivity() {
 
     }
 
-    private fun loadSavedUrl() {
+    private fun loadSettings() {
         val sharedPreferences = getSharedPreferences("ImmichFramePrefs", MODE_PRIVATE)
         val savedUrl = sharedPreferences.getString("webview_url", getString(R.string.webview_url))
         if (savedUrl != null) {
             webView.loadUrl(savedUrl)
         }
+        buttonSettings = findViewById(R.id.btn_settings)
+        buttonQuit = findViewById(R.id.btn_quit)
+        val savedHideButtons = sharedPreferences.getBoolean("hideButtons",false)
+        val alphaValue = if (savedHideButtons) 0f else 1f
+        buttonSettings.alpha = alphaValue
+        buttonQuit.alpha = alphaValue
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {

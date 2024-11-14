@@ -19,10 +19,17 @@
         android:autofillHints="web-url"
         android:inputType="textUri"
         tools:ignore="HardcodedText" />
+    <CheckBox
+        android:id="@+id/checkboxHideButtons"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Hide Buttons"
+        tools:ignore="HardcodedText" />
     <Button
         android:id="@+id/buttonSaveUrl"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Save URL"
+        android:text="Save Settings"
         tools:ignore="HardcodedText" />
+
 </LinearLayout>
