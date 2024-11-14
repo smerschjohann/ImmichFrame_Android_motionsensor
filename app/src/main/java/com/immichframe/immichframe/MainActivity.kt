@@ -15,20 +15,19 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.webkit.WebResourceRequest
 import androidx.appcompat.app.AppCompatActivity
-import android.widget.Button
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.view.WindowCompat
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 
 class MainActivity : AppCompatActivity() {
     private lateinit var webView: WebView
-    private lateinit var buttonSettings: Button
-    private lateinit var buttonQuit: Button
 
-    private val settingsLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            loadSettings()
+    private val settingsLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == Activity.RESULT_OK) {
+                loadSettings()
+            }
         }
-    }
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -39,13 +38,13 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
         hideSystemUI()
 
-        buttonSettings = findViewById(R.id.btn_settings)
-        buttonQuit = findViewById(R.id.btn_quit)
-
         webView = findViewById(R.id.main_web_view)
 
         webView.webViewClient = object : WebViewClient() {
-            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+            override fun shouldOverrideUrlLoading(
+                view: WebView?,
+                request: WebResourceRequest?
+            ): Boolean {
                 val url = request?.url
                 if (url != null) {
                     // Open the URL in the default browser
@@ -60,29 +59,13 @@ class MainActivity : AppCompatActivity() {
         webView.settings.cacheMode = WebSettings.LOAD_NO_CACHE
         loadSettings()
 
-        buttonQuit.setOnClickListener {
-            finish()
-            webView.requestFocus()
-        }
+        val swipeRefreshLayout = findViewById<SwipeRefreshLayout>(R.id.swipeRefreshLayout)
 
-        buttonQuit.setOnFocusChangeListener { _, hasFocus ->
-            if (hasFocus) {
-                buttonQuit.performClick()
-            }
-        }
-
-
-        buttonSettings.setOnClickListener {
+        swipeRefreshLayout.setOnRefreshListener {
             val intent = Intent(this, SettingsActivity::class.java)
             settingsLauncher.launch(intent)
-            webView.requestFocus()
+            swipeRefreshLayout.isRefreshing = false
         }
-        buttonSettings.setOnFocusChangeListener { _, hasFocus ->
-            if (hasFocus) {
-                buttonSettings.performClick()
-            }
-        }
-
     }
 
     private fun loadSettings() {
@@ -91,25 +74,17 @@ class MainActivity : AppCompatActivity() {
         if (savedUrl != null) {
             webView.loadUrl(savedUrl)
         }
-        buttonSettings = findViewById(R.id.btn_settings)
-        buttonQuit = findViewById(R.id.btn_quit)
-        val savedHideButtons = sharedPreferences.getBoolean("hideButtons",false)
-        val alphaValue = if (savedHideButtons) 0f else 1f
-        buttonSettings.alpha = alphaValue
-        buttonQuit.alpha = alphaValue
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         if (event.action == KeyEvent.ACTION_DOWN) {
             when (event.keyCode) {
                 KeyEvent.KEYCODE_DPAD_UP -> {
-                    buttonSettings.requestFocus()
+                    val intent = Intent(this, SettingsActivity::class.java)
+                    settingsLauncher.launch(intent)
                     return true
                 }
-                KeyEvent.KEYCODE_DPAD_DOWN -> {
-                    buttonQuit.requestFocus()
-                    return true
-                }
+
                 KeyEvent.KEYCODE_DPAD_CENTER -> {
                     // Simulate a Space key press
                     val spaceEvent = KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_SPACE)
@@ -151,9 +126,10 @@ class MainActivity : AppCompatActivity() {
             hideSystemUI()
         }
     }
+
     override fun onResume() {
         super.onResume()
-        window.addFlags( WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         hideSystemUI()
     }
 
