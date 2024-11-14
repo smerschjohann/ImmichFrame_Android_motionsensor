@@ -26,7 +26,7 @@ class MainActivity : AppCompatActivity() {
 
     private val settingsLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
-            loadSavedUrl() // Reload the URL after returning from settings
+            loadSavedUrl()
         }
     }
 
@@ -40,7 +40,6 @@ class MainActivity : AppCompatActivity() {
         hideSystemUI()
 
         webView = findViewById(R.id.main_web_view)
-        //webView.settings.javaScriptEnabled = true
         webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 val url = request?.url
@@ -48,9 +47,9 @@ class MainActivity : AppCompatActivity() {
                     // Open the URL in the default browser
                     val intent = Intent(Intent.ACTION_VIEW, url)
                     startActivity(intent)
-                    return true  // Indicate that you've handled the URL
+                    return true
                 }
-                return false  // Let WebView handle it if URL is null
+                return false
             }
         }
         webView.settings.javaScriptEnabled = true
@@ -60,15 +59,31 @@ class MainActivity : AppCompatActivity() {
         buttonQuit = findViewById(R.id.btn_quit)
         buttonQuit.setOnClickListener {
             finish()
+            webView.requestFocus()
+        }
+
+        buttonQuit.setOnFocusChangeListener { _, hasFocus ->
+            buttonQuit.alpha = if (hasFocus) 1f else 0f
+            if (hasFocus) {
+                buttonQuit.performClick()
+            }
         }
 
         buttonSettings = findViewById(R.id.btn_settings)
         buttonSettings.setOnClickListener {
             val intent = Intent(this, SettingsActivity::class.java)
             settingsLauncher.launch(intent)
+            webView.requestFocus()
+        }
+        buttonSettings.setOnFocusChangeListener { _, hasFocus ->
+            buttonSettings.alpha = if (hasFocus) 1f else 0f
+            if (hasFocus) {
+                buttonSettings.performClick()
+            }
         }
 
     }
+
     private fun loadSavedUrl() {
         val sharedPreferences = getSharedPreferences("ImmichFramePrefs", MODE_PRIVATE)
         val savedUrl = sharedPreferences.getString("webview_url", getString(R.string.webview_url))
@@ -81,18 +96,18 @@ class MainActivity : AppCompatActivity() {
         if (event.action == KeyEvent.ACTION_DOWN) {
             when (event.keyCode) {
                 KeyEvent.KEYCODE_DPAD_UP -> {
-                    buttonSettings.performClick()
-                    return true // Event handled
+                    buttonSettings.requestFocus()
+                    return true
                 }
                 KeyEvent.KEYCODE_DPAD_DOWN -> {
-                    buttonQuit.performClick()
-                    return true // Event handled
+                    buttonQuit.requestFocus()
+                    return true
                 }
                 KeyEvent.KEYCODE_DPAD_CENTER -> {
                     // Simulate a Space key press
                     val spaceEvent = KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_SPACE)
                     dispatchKeyEvent(spaceEvent)
-                    return true // Event handled
+                    return true
                 }
             }
         }
