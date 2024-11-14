@@ -60,11 +60,10 @@ class MainActivity : AppCompatActivity() {
         loadSettings()
 
         val swipeRefreshLayout = findViewById<SwipeRefreshLayout>(R.id.swipeRefreshLayout)
-
         swipeRefreshLayout.setOnRefreshListener {
+            swipeRefreshLayout.isRefreshing = false
             val intent = Intent(this, SettingsActivity::class.java)
             settingsLauncher.launch(intent)
-            swipeRefreshLayout.isRefreshing = false
         }
     }
 

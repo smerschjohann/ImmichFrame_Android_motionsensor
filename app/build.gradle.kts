@@ -28,10 +28,10 @@ android {
 
     defaultConfig {
         applicationId = "com.immichframe.immichframe"
-        minSdk = 21
+        minSdk = 23
         targetSdk = 34
-        versionCode = 17
-        versionName = "1.0.17.0"
+        versionCode = 18
+        versionName = "1.0.18.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
