@@ -30,8 +30,8 @@ android {
         applicationId = "com.immichframe.immichframe"
         minSdk = 23
         targetSdk = 34
-        versionCode = 18
-        versionName = "1.0.18.0"
+        versionCode = 19
+        versionName = "1.0.19.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
