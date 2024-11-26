@@ -15,13 +15,14 @@ class ScreenSaverService : DreamService() {
     private lateinit var webView: WebView
 
     @SuppressLint("SetJavaScriptEnabled")
-    override fun onAttachedToWindow() {
+    override fun onDreamingStarted() {
         super.onAttachedToWindow()
         isFullscreen = true
         isInteractive = false
         setContentView(R.layout.screen_saver_view)
 
         webView = findViewById(R.id.screensaver_webview)
+        webView.settings.javaScriptEnabled = true
         webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(
                 view: WebView?,
@@ -50,22 +51,17 @@ class ScreenSaverService : DreamService() {
         acquireWakeLock()
     }
 
+    override fun onDreamingStopped() {
+        super.onDreamingStopped()
+        releaseWakeLock()
+    }
+
     private fun loadSavedUrl() {
         val sharedPreferences = getSharedPreferences("ImmichFramePrefs", MODE_PRIVATE)
         val savedUrl = sharedPreferences.getString("webview_url", getString(R.string.webview_url))
         if (savedUrl != null) {
             webView.loadUrl(savedUrl)
         }
-    }
-
-    override fun onDreamingStopped() {
-        super.onDreamingStopped()
-        releaseWakeLock()
-    }
-
-    override fun onDetachedFromWindow() {
-        super.onDetachedFromWindow()
-        releaseWakeLock()
     }
 
     private fun acquireWakeLock() {
