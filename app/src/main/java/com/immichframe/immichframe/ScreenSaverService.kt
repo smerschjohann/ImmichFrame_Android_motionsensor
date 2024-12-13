@@ -1,7 +1,6 @@
 package com.immichframe.immichframe
 
 import android.annotation.SuppressLint
-import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.graphics.BitmapFactory
@@ -24,10 +23,6 @@ import android.webkit.WebViewClient
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
-import androidx.activity.result.contract.ActivityResultContracts
-import com.immichframe.immichframe.MainActivity.ApiService
-import com.immichframe.immichframe.MainActivity.ImageResponse
-import com.immichframe.immichframe.MainActivity.ServerSettings
 import com.immichframe.immichframe.helpers.TextSizeHelper
 import retrofit2.Call
 import retrofit2.Callback
