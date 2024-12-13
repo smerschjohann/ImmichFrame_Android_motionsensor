@@ -19,6 +19,12 @@
         android:autofillHints="web-url"
         android:inputType="textUri"
         tools:ignore="HardcodedText" />
+    <CheckBox
+        android:id="@+id/chkUseWebView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Use WebView?"
+        tools:ignore="HardcodedText" />
 
     <Button
         android:id="@+id/buttonSaveUrl"
