@@ -45,7 +45,7 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
-                <category android:name="android.intent.category.SECONDARY_HOME" />
+                <category android:name="android.intent.category.HOME" />
             </intent-filter>
         </activity>
     </application>
