@@ -290,12 +290,13 @@ class ScreenSaverService : DreamService() {
             txtPhotoInfo.visibility = View.VISIBLE
             txtPhotoInfo.textSize =
                 TextSizeHelper.cssFontSizeToSp(serverSettings.baseFontSize, this)
-            if (serverSettings.primaryColor.isNotEmpty()) {
+            val primaryColor = serverSettings.primaryColor
+            if (primaryColor.isNotBlank() && primaryColor != "null") {
                 txtPhotoInfo.setTextColor(
-                    runCatching { Color.parseColor(serverSettings.primaryColor) }.getOrDefault(
-                        Color.WHITE
-                    )
+                    runCatching { Color.parseColor(primaryColor) }.getOrDefault(Color.WHITE)
                 )
+            } else {
+                txtPhotoInfo.setTextColor(Color.WHITE)
             }
         } else {
             txtPhotoInfo.visibility = View.GONE
@@ -303,12 +304,13 @@ class ScreenSaverService : DreamService() {
         if (serverSettings.showClock) {
             txtDateTime.visibility = View.VISIBLE
             txtDateTime.textSize = TextSizeHelper.cssFontSizeToSp(serverSettings.baseFontSize, this)
-            if (serverSettings.primaryColor.isNotEmpty()) {
+            val primaryColor = serverSettings.primaryColor
+            if (primaryColor.isNotBlank() && primaryColor != "null") {
                 txtDateTime.setTextColor(
-                    runCatching { Color.parseColor(serverSettings.primaryColor) }.getOrDefault(
-                        Color.WHITE
-                    )
+                    runCatching { Color.parseColor(primaryColor) }.getOrDefault(Color.WHITE)
                 )
+            } else {
+                txtDateTime.setTextColor(Color.WHITE)
             }
         } else {
             txtDateTime.visibility = View.GONE
