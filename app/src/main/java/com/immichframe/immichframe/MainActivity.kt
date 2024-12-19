@@ -213,32 +213,6 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
-    //    private fun getServerSettings(
-//        onSuccess: (ServerSettings) -> Unit,
-//        onFailure: (Throwable) -> Unit
-//    ) {
-//        apiService.getServerSettings().enqueue(object : Callback<ServerSettings> {
-//            override fun onResponse(
-//                call: Call<ServerSettings>,
-//                response: Response<ServerSettings>
-//            ) {
-//                if (response.isSuccessful) {
-//                    val serverSettingsResponse = response.body()
-//                    if (serverSettingsResponse != null) {
-//                        onSuccess(serverSettingsResponse)
-//                    } else {
-//                        onFailure(Exception("Empty response body"))
-//                    }
-//                } else {
-//                    onFailure(Exception("HTTP ${response.code()}: ${response.message()}"))
-//                }
-//            }
-//
-//            override fun onFailure(call: Call<ServerSettings>, t: Throwable) {
-//                onFailure(t)
-//            }
-//        })
-//    }
     private fun getServerSettings(
         onSuccess: (ServerSettings) -> Unit,
         onFailure: (Throwable) -> Unit,
