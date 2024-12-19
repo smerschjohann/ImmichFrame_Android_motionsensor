@@ -199,30 +199,53 @@ class ScreenSaverService : DreamService() {
 
     private fun getServerSettings(
         onSuccess: (ServerSettings) -> Unit,
-        onFailure: (Throwable) -> Unit
+        onFailure: (Throwable) -> Unit,
+        maxRetries: Int = 18,
+        retryDelayMillis: Long = 5000
     ) {
-        apiService.getServerSettings().enqueue(object :
-            Callback<ServerSettings> {
-            override fun onResponse(
-                call: Call<ServerSettings>,
-                response: Response<ServerSettings>
-            ) {
-                if (response.isSuccessful) {
-                    val serverSettingsResponse = response.body()
-                    if (serverSettingsResponse != null) {
-                        onSuccess(serverSettingsResponse)
-                    } else {
-                        onFailure(Exception("Empty response body"))
-                    }
-                } else {
-                    onFailure(Exception("HTTP ${response.code()}: ${response.message()}"))
-                }
-            }
+        var retryCount = 0
 
-            override fun onFailure(call: Call<ServerSettings>, t: Throwable) {
-                onFailure(t)
-            }
-        })
+        fun attemptFetch() {
+            apiService.getServerSettings().enqueue(object : Callback<ServerSettings> {
+                override fun onResponse(
+                    call: Call<ServerSettings>,
+                    response: Response<ServerSettings>
+                ) {
+                    if (response.isSuccessful) {
+                        val serverSettingsResponse = response.body()
+                        if (serverSettingsResponse != null) {
+                            onSuccess(serverSettingsResponse)
+                        } else {
+                            handleFailure(Exception("Empty response body"))
+                        }
+                    } else {
+                        handleFailure(Exception("HTTP ${response.code()}: ${response.message()}"))
+                    }
+                }
+
+                override fun onFailure(call: Call<ServerSettings>, t: Throwable) {
+                    handleFailure(t)
+                }
+
+                private fun handleFailure(t: Throwable) {
+                    if (retryCount < maxRetries) {
+                        retryCount++
+                        Toast.makeText(
+                            this@ScreenSaverService,
+                            "Retrying to fetch server settings... Attempt $retryCount of $maxRetries",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        Handler(Looper.getMainLooper()).postDelayed({
+                            attemptFetch()
+                        }, retryDelayMillis)
+                    } else {
+                        onFailure(t)
+                    }
+                }
+            })
+        }
+
+        attemptFetch()
     }
 
     @SuppressLint("SetJavaScriptEnabled")
