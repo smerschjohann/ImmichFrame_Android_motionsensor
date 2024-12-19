@@ -69,10 +69,10 @@ class ScreenSaverService : DreamService() {
         val showPeopleDesc: Boolean,
         val showImageLocation: Boolean,
         val imageLocationFormat: String,
-        val primaryColor: String,
+        val primaryColor: String?,
         val secondaryColor: String,
         val style: String,
-        val baseFontSize: String,
+        val baseFontSize: String?,
         val showWeatherDescription: Boolean,
         val unattendedMode: Boolean,
         val imageZoom: Boolean,
@@ -290,10 +290,9 @@ class ScreenSaverService : DreamService() {
             txtPhotoInfo.visibility = View.VISIBLE
             txtPhotoInfo.textSize =
                 TextSizeHelper.cssFontSizeToSp(serverSettings.baseFontSize, this)
-            val primaryColor = serverSettings.primaryColor
-            if (primaryColor.isNotBlank() && primaryColor != "null") {
+            if (serverSettings.primaryColor != null) {
                 txtPhotoInfo.setTextColor(
-                    runCatching { Color.parseColor(primaryColor) }.getOrDefault(Color.WHITE)
+                    runCatching { Color.parseColor(serverSettings.primaryColor) }.getOrDefault(Color.WHITE)
                 )
             } else {
                 txtPhotoInfo.setTextColor(Color.WHITE)
@@ -304,10 +303,9 @@ class ScreenSaverService : DreamService() {
         if (serverSettings.showClock) {
             txtDateTime.visibility = View.VISIBLE
             txtDateTime.textSize = TextSizeHelper.cssFontSizeToSp(serverSettings.baseFontSize, this)
-            val primaryColor = serverSettings.primaryColor
-            if (primaryColor.isNotBlank() && primaryColor != "null") {
+            if (serverSettings.primaryColor != null) {
                 txtDateTime.setTextColor(
-                    runCatching { Color.parseColor(primaryColor) }.getOrDefault(Color.WHITE)
+                    runCatching { Color.parseColor(serverSettings.primaryColor) }.getOrDefault(Color.WHITE)
                 )
             } else {
                 txtDateTime.setTextColor(Color.WHITE)
