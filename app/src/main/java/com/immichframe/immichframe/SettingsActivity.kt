@@ -11,7 +11,7 @@ import androidx.appcompat.app.AppCompatActivity
 class SettingsActivity : AppCompatActivity() {
     private lateinit var editTextUrl: EditText
     private lateinit var buttonSaveUrl: Button
-    private lateinit var chkUseWebView: CheckBox
+    private lateinit var chkUseWebView: androidx.appcompat.widget.SwitchCompat
     private var useWebView = true
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

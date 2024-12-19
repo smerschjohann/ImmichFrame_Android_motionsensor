@@ -131,12 +131,16 @@ class ScreenSaverService : DreamService() {
                             decodedThumbHash.size
                         )
 
-                        imageView.setImageBitmap(randomBitmap)
-                        imageView.alpha = 0f
-                        imageView.setImageBitmap(randomBitmap)
-                        imageView.background = BitmapDrawable(resources, thumbHashBitmap)
-                        imageView.animate().alpha(1f)
+                        imageView.animate().alpha(0f)
                             .setDuration((serverSettings.transitionDuration * 1000).toLong())
+                            .withEndAction {
+                                imageView.setImageBitmap(randomBitmap)
+                                imageView.background = BitmapDrawable(resources, thumbHashBitmap)
+
+                                imageView.animate().alpha(1f)
+                                    .setDuration((serverSettings.transitionDuration * 1000).toLong())
+                                    .start()
+                            }
                             .start()
 
                         if (serverSettings.showPhotoDate || serverSettings.showImageLocation) {
