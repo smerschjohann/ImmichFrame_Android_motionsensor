@@ -14,6 +14,7 @@ import android.text.SpannableString
 import android.text.Spanned
 import android.text.style.RelativeSizeSpan
 import android.util.Base64
+import android.util.Log
 import android.view.KeyEvent
 import android.view.View
 import android.view.WindowInsets
@@ -50,9 +51,11 @@ class MainActivity : AppCompatActivity() {
     private lateinit var serverSettings: ServerSettings
     private var retrofit: Retrofit? = null
     private lateinit var apiService: ApiService
-    private var isTimerRunning = false
+    private var isImageTimerRunning = false
+    private var isWeatherTimerRunning = false
     private val handler = Handler(Looper.getMainLooper())
     private var useWebView = true
+    private var currentWeather = ""
 
     data class ImageResponse(
         val randomImageBase64: String,
@@ -87,12 +90,24 @@ class MainActivity : AppCompatActivity() {
         val language: String
     )
 
+    data class Weather(
+        val location: String,
+        val temperature: Double,
+        val unit: String,
+        val temperatureUnit: String,
+        val description: String,
+        val iconId: String
+    )
+
     interface ApiService {
         @GET("api/Asset/RandomImageAndInfo")
         fun getImageData(): Call<ImageResponse>
 
         @GET("api/Config")
         fun getServerSettings(): Call<ServerSettings>
+
+        @GET("api/Weather")
+        fun getWeather(): Call<Weather>
     }
 
     private val settingsLauncher =
@@ -192,6 +207,9 @@ class MainActivity : AppCompatActivity() {
                             )
                             txtDateTime.text = spannableString
                         }
+                        if (serverSettings.showWeatherDescription) {
+                            txtDateTime.append(currentWeather)
+                        }
                     }
                 } else {
                     Toast.makeText(
@@ -213,10 +231,28 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
+    private fun getWeather() {
+        apiService.getWeather().enqueue(object : Callback<Weather> {
+            override fun onResponse(call: Call<Weather>, response: Response<Weather>) {
+                if (response.isSuccessful) {
+                    val weatherResponse = response.body()
+                    if (weatherResponse != null) {
+                        currentWeather =
+                            "\n ${weatherResponse.location}, ${weatherResponse.temperatureUnit} \n ${weatherResponse.description}"
+                    }
+                }
+            }
+
+            override fun onFailure(call: Call<Weather>, t: Throwable) {
+                Log.e("Weather", "Failed to fetch weather: ${t.message}")
+            }
+        })
+    }
+
     private fun getServerSettings(
         onSuccess: (ServerSettings) -> Unit,
         onFailure: (Throwable) -> Unit,
-        maxRetries: Int = 18,
+        maxRetries: Int = 36,
         retryDelayMillis: Long = 5000
     ) {
         var retryCount = 0
@@ -357,14 +393,28 @@ class MainActivity : AppCompatActivity() {
 
         getNextImage()
 
-        if (!isTimerRunning) {
-            isTimerRunning = true
+        if (!isImageTimerRunning) {
+            isImageTimerRunning = true
             handler.postDelayed(object : Runnable {
                 override fun run() {
                     getNextImage()
                     handler.postDelayed(this, (serverSettings.interval * 1000).toLong())
                 }
             }, (serverSettings.interval * 1000).toLong())
+        }
+
+        if (serverSettings.showWeatherDescription) {
+            getWeather()
+            if (!isWeatherTimerRunning) {
+                isWeatherTimerRunning = true
+                handler.postDelayed(object : Runnable {
+                    override fun run() {
+                        getWeather()
+                        handler.postDelayed(this, 600000)
+                    }
+                }, (300000))
+            }
+
         }
     }
 

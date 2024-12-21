@@ -14,6 +14,7 @@ import android.text.SpannableString
 import android.text.Spanned
 import android.text.style.RelativeSizeSpan
 import android.util.Base64
+import android.util.Log
 import android.view.View
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
@@ -43,9 +44,11 @@ class ScreenSaverService : DreamService() {
     private lateinit var serverSettings: ServerSettings
     private var retrofit: Retrofit? = null
     private lateinit var apiService: ApiService
-    private var isTimerRunning = false
+    private var isImageTimerRunning = false
+    private var isWeatherTimerRunning = false
     private val handler = Handler(Looper.getMainLooper())
     private var useWebView = true
+    private var currentWeather = ""
 
     data class ImageResponse(
         val randomImageBase64: String,
@@ -80,12 +83,24 @@ class ScreenSaverService : DreamService() {
         val language: String
     )
 
+    data class Weather(
+        val location: String,
+        val temperature: Double,
+        val unit: String,
+        val temperatureUnit: String,
+        val description: String,
+        val iconId: String
+    )
+
     interface ApiService {
         @GET("api/Asset/RandomImageAndInfo")
         fun getImageData(): Call<ImageResponse>
 
         @GET("api/Config")
         fun getServerSettings(): Call<ServerSettings>
+
+        @GET("api/Weather")
+        fun getWeather(): Call<Weather>
     }
 
     override fun onDreamingStarted() {
@@ -176,6 +191,9 @@ class ScreenSaverService : DreamService() {
                             )
                             txtDateTime.text = spannableString
                         }
+                        if (serverSettings.showWeatherDescription) {
+                            txtDateTime.append(currentWeather)
+                        }
                     }
                 } else {
                     Toast.makeText(
@@ -193,6 +211,24 @@ class ScreenSaverService : DreamService() {
                     "Failed to load image: ${t.localizedMessage}",
                     Toast.LENGTH_SHORT
                 ).show()
+            }
+        })
+    }
+
+    private fun getWeather() {
+        apiService.getWeather().enqueue(object : Callback<Weather> {
+            override fun onResponse(call: Call<Weather>, response: Response<Weather>) {
+                if (response.isSuccessful) {
+                    val weatherResponse = response.body()
+                    if (weatherResponse != null) {
+                        currentWeather =
+                            "\n ${weatherResponse.location}, ${weatherResponse.temperatureUnit} \n ${weatherResponse.description}"
+                    }
+                }
+            }
+
+            override fun onFailure(call: Call<Weather>, t: Throwable) {
+                Log.e("Weather", "Failed to fetch weather: ${t.message}")
             }
         })
     }
@@ -343,14 +379,27 @@ class ScreenSaverService : DreamService() {
 
         getNextImage()
 
-        if (!isTimerRunning) {
-            isTimerRunning = true
+        if (!isImageTimerRunning) {
+            isImageTimerRunning = true
             handler.postDelayed(object : Runnable {
                 override fun run() {
                     getNextImage()
                     handler.postDelayed(this, (serverSettings.interval * 1000).toLong())
                 }
             }, (serverSettings.interval * 1000).toLong())
+        }
+        if (serverSettings.showWeatherDescription) {
+            getWeather()
+            if (!isWeatherTimerRunning) {
+                isWeatherTimerRunning = true
+                handler.postDelayed(object : Runnable {
+                    override fun run() {
+                        getWeather()
+                        handler.postDelayed(this, 600000)
+                    }
+                }, (300000))
+            }
+
         }
     }
 
