@@ -48,6 +48,7 @@ class ScreenSaverService : DreamService() {
     private var isWeatherTimerRunning = false
     private val handler = Handler(Looper.getMainLooper())
     private var useWebView = true
+    private var blurredBackground = true
     private var currentWeather = ""
 
     data class ImageResponse(
@@ -150,7 +151,12 @@ class ScreenSaverService : DreamService() {
                             .setDuration((serverSettings.transitionDuration * 1000).toLong())
                             .withEndAction {
                                 imageView.setImageBitmap(randomBitmap)
-                                imageView.background = BitmapDrawable(resources, thumbHashBitmap)
+                                if (blurredBackground) {
+                                    imageView.background =
+                                        BitmapDrawable(resources, thumbHashBitmap)
+                                } else {
+                                    imageView.background = null
+                                }
 
                                 imageView.animate().alpha(1f)
                                     .setDuration((serverSettings.transitionDuration * 1000).toLong())
@@ -287,6 +293,7 @@ class ScreenSaverService : DreamService() {
     @SuppressLint("SetJavaScriptEnabled")
     private fun loadSettings() {
         val sharedPreferences = getSharedPreferences("ImmichFramePrefs", MODE_PRIVATE)
+        blurredBackground = sharedPreferences.getBoolean("blurredBackground", true)
         var savedUrl = sharedPreferences.getString("webview_url", getString(R.string.webview_url))
         useWebView = sharedPreferences.getBoolean("useWebView", true)
         if (!savedUrl?.endsWith("/")!!) {
