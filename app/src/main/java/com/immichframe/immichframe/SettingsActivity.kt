@@ -6,7 +6,6 @@ import android.os.Bundle
 import android.provider.Settings
 import android.view.View
 import android.widget.Button
-import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -17,6 +16,7 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var chkUseWebView: androidx.appcompat.widget.SwitchCompat
     private lateinit var chkBlurredBackground: androidx.appcompat.widget.SwitchCompat
     private lateinit var buttonAndroidSettings: Button
+    private lateinit var editTextAuthSecret: EditText
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_settings)
@@ -25,14 +25,16 @@ class SettingsActivity : AppCompatActivity() {
         buttonSaveUrl = findViewById(R.id.buttonSaveUrl)
         chkUseWebView = findViewById(R.id.chkUseWebView)
         chkBlurredBackground = findViewById(R.id.chkBlurredBackground)
-        buttonAndroidSettings= findViewById(R.id.buttonAndroidSettings)
+        buttonAndroidSettings = findViewById(R.id.buttonAndroidSettings)
+        editTextAuthSecret = findViewById(R.id.editTextAuthSecret)
 
         loadSettings()
 
         buttonSaveUrl.setOnClickListener {
             val url = editTextUrl.text.toString()
+            val authSecret = editTextAuthSecret.text.toString()
             if (url.isNotEmpty()) {
-                saveSettings(url)
+                saveSettings(url, authSecret)
                 Toast.makeText(this, "Settings saved!", Toast.LENGTH_SHORT).show()
                 setResult(Activity.RESULT_OK)
                 finish()
@@ -65,12 +67,14 @@ class SettingsActivity : AppCompatActivity() {
         val blurredBackground = sharedPreferences.getBoolean("blurredBackground", true)
         chkBlurredBackground.isChecked = blurredBackground
         val useWebView = sharedPreferences.getBoolean("useWebView", true)
+        val authSecret = sharedPreferences.getString("authSecret", "") ?: ""
         chkUseWebView.isChecked = useWebView
         editTextUrl.setText(savedUrl)
+        editTextAuthSecret.setText(authSecret)
         editTextUrl.requestFocus()
     }
 
-    private fun saveSettings(url: String) {
+    private fun saveSettings(url: String, authSecret: String) {
         val useWebView = chkUseWebView.isChecked
         val blurredBackground = chkBlurredBackground.isChecked
         val sharedPreferences = getSharedPreferences("ImmichFramePrefs", MODE_PRIVATE)
@@ -78,6 +82,7 @@ class SettingsActivity : AppCompatActivity() {
             putString("webview_url", url)
             putBoolean("useWebView", useWebView)
             putBoolean("blurredBackground", blurredBackground)
+            putString("authSecret", authSecret)
             apply()
         }
     }

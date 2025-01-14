@@ -6,6 +6,7 @@ import android.content.Intent
 import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.drawable.BitmapDrawable
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -33,6 +34,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.WindowCompat
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.immichframe.immichframe.helpers.TextSizeHelper
+import okhttp3.OkHttpClient
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -310,12 +312,22 @@ class MainActivity : AppCompatActivity() {
     private fun loadSettings() {
         val sharedPreferences = getSharedPreferences("ImmichFramePrefs", MODE_PRIVATE)
         blurredBackground = sharedPreferences.getBoolean("blurredBackground", true)
-        var savedUrl = sharedPreferences.getString("webview_url", getString(R.string.webview_url))
+        var savedUrl =
+            sharedPreferences.getString("webview_url", getString(R.string.webview_url)) ?: ""
         useWebView = sharedPreferences.getBoolean("useWebView", true)
-        if (!savedUrl?.endsWith("/")!!) {
-            savedUrl += "/"
-        }
+        val authSecret = sharedPreferences.getString("authSecret", "") ?: ""
+
         if (useWebView) {
+            savedUrl = if (authSecret.isNotEmpty()) {
+                Uri.parse(savedUrl)
+                    .buildUpon()
+                    .appendQueryParameter("authsecret", authSecret)
+                    .build()
+                    .toString()
+            } else {
+                savedUrl
+            }
+
             handler.removeCallbacksAndMessages(null)
             webView.visibility = View.VISIBLE
             imageView.visibility = View.GONE
@@ -353,7 +365,7 @@ class MainActivity : AppCompatActivity() {
         } else {
             webView.visibility = View.GONE
             imageView.visibility = View.VISIBLE
-            retrofit = createRetrofit(savedUrl)
+            retrofit = createRetrofit(savedUrl, authSecret)
             apiService = retrofit!!.create(ApiService::class.java)
             getServerSettings(
                 onSuccess = { settings ->
@@ -425,12 +437,30 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun createRetrofit(baseUrl: String): Retrofit {
+    private fun createRetrofit(baseUrl: String, authSecret: String): Retrofit {
+        val client = OkHttpClient.Builder()
+            .addInterceptor { chain ->
+                val originalRequest = chain.request()
+
+                val request = if (authSecret.isNotEmpty()) {
+                    originalRequest.newBuilder()
+                        .addHeader("Authorization", "Bearer $authSecret")
+                        .build()
+                } else {
+                    originalRequest
+                }
+
+                chain.proceed(request)
+            }
+            .build()
+
         return Retrofit.Builder()
             .baseUrl(baseUrl)
+            .client(client)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
     }
+
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         if (event.action == KeyEvent.ACTION_DOWN) {

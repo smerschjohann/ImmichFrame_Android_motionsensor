@@ -6,6 +6,7 @@ import android.content.Intent
 import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.drawable.BitmapDrawable
+import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.os.PowerManager
@@ -25,6 +26,7 @@ import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import com.immichframe.immichframe.helpers.TextSizeHelper
+import okhttp3.OkHttpClient
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -296,10 +298,20 @@ class ScreenSaverService : DreamService() {
         blurredBackground = sharedPreferences.getBoolean("blurredBackground", true)
         var savedUrl = sharedPreferences.getString("webview_url", getString(R.string.webview_url))
         useWebView = sharedPreferences.getBoolean("useWebView", true)
+        val authSecret = sharedPreferences.getString("authSecret", "") ?: ""
         if (!savedUrl?.endsWith("/")!!) {
             savedUrl += "/"
         }
         if (useWebView) {
+            val savedUrlWithAuth = if (authSecret.isNotEmpty()) {
+                Uri.parse(savedUrl)
+                    .buildUpon()
+                    .appendQueryParameter("authSecret", authSecret)
+                    .build()
+                    .toString()
+            } else {
+                savedUrl
+            }
             handler.removeCallbacksAndMessages(null)
             webView.visibility = View.VISIBLE
             imageView.visibility = View.GONE
@@ -333,11 +345,11 @@ class ScreenSaverService : DreamService() {
             webView.settings.javaScriptEnabled = true
             webView.settings.cacheMode = WebSettings.LOAD_NO_CACHE
             webView.settings.domStorageEnabled = true
-            webView.loadUrl(savedUrl)
+            webView.loadUrl(savedUrlWithAuth)
         } else {
             webView.visibility = View.GONE
             imageView.visibility = View.VISIBLE
-            retrofit = createRetrofit(savedUrl)
+            retrofit = createRetrofit(savedUrl, authSecret)
             apiService = retrofit!!.create(ApiService::class.java)
             getServerSettings(
                 onSuccess = { settings ->
@@ -410,13 +422,29 @@ class ScreenSaverService : DreamService() {
         }
     }
 
-    private fun createRetrofit(baseUrl: String): Retrofit {
+    private fun createRetrofit(baseUrl: String, authSecret: String): Retrofit {
+        val client = OkHttpClient.Builder()
+            .addInterceptor { chain ->
+                val originalRequest = chain.request()
+
+                val request = if (authSecret.isNotEmpty()) {
+                    originalRequest.newBuilder()
+                        .addHeader("Authorization", "Bearer $authSecret")
+                        .build()
+                } else {
+                    originalRequest
+                }
+
+                chain.proceed(request)
+            }
+            .build()
+
         return Retrofit.Builder()
             .baseUrl(baseUrl)
+            .client(client)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
     }
-
 
     private fun acquireWakeLock() {
         if (wakeLock == null) {
