@@ -21,6 +21,22 @@
         android:inputType="textUri"
         tools:ignore="HardcodedText" />
 
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Authorization Secret:"
+        tools:ignore="HardcodedText" />
+
+    <EditText
+        android:id="@+id/editTextAuthSecret"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="20dp"
+        android:autofillHints="secret"
+        android:hint="optional"
+        android:inputType="textPassword"
+        tools:ignore="HardcodedText" />
+
     <androidx.appcompat.widget.SwitchCompat
         android:id="@+id/chkUseWebView"
         android:layout_width="wrap_content"
@@ -37,6 +53,7 @@
         android:text="Blurred Background?"
         android:visibility="gone"
         tools:ignore="HardcodedText" />
+
     <Button
         android:id="@+id/buttonAndroidSettings"
         android:layout_width="wrap_content"
@@ -45,21 +62,6 @@
         android:visibility="gone"
         tools:ignore="HardcodedText" />
 
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Authorization Secret:"
-        tools:ignore="HardcodedText" />
-
-    <EditText
-        android:id="@+id/editTextAuthSecret"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="20dp"
-        android:autofillHints="secret"
-        android:hint="optional"
-        android:inputType="textPassword"
-        tools:ignore="HardcodedText" />
     <Button
         android:id="@+id/buttonSaveUrl"
         android:layout_width="wrap_content"
