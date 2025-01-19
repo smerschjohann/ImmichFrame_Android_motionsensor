@@ -296,22 +296,22 @@ class ScreenSaverService : DreamService() {
     private fun loadSettings() {
         val sharedPreferences = getSharedPreferences("ImmichFramePrefs", MODE_PRIVATE)
         blurredBackground = sharedPreferences.getBoolean("blurredBackground", true)
-        var savedUrl = sharedPreferences.getString("webview_url", getString(R.string.webview_url))
+        var savedUrl =
+            sharedPreferences.getString("webview_url", getString(R.string.webview_url)) ?: ""
         useWebView = sharedPreferences.getBoolean("useWebView", true)
         val authSecret = sharedPreferences.getString("authSecret", "") ?: ""
-        if (!savedUrl?.endsWith("/")!!) {
-            savedUrl += "/"
-        }
+
         if (useWebView) {
-            val savedUrlWithAuth = if (authSecret.isNotEmpty()) {
+            savedUrl = if (authSecret.isNotEmpty()) {
                 Uri.parse(savedUrl)
                     .buildUpon()
-                    .appendQueryParameter("authSecret", authSecret)
+                    .appendQueryParameter("authsecret", authSecret)
                     .build()
                     .toString()
             } else {
                 savedUrl
             }
+
             handler.removeCallbacksAndMessages(null)
             webView.visibility = View.VISIBLE
             imageView.visibility = View.GONE
@@ -345,7 +345,7 @@ class ScreenSaverService : DreamService() {
             webView.settings.javaScriptEnabled = true
             webView.settings.cacheMode = WebSettings.LOAD_NO_CACHE
             webView.settings.domStorageEnabled = true
-            webView.loadUrl(savedUrlWithAuth)
+            webView.loadUrl(savedUrl)
         } else {
             webView.visibility = View.GONE
             imageView.visibility = View.VISIBLE
