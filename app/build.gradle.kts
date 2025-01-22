@@ -24,15 +24,14 @@ android {
         }
     }
     namespace = "com.immichframe.immichframe"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.immichframe.immichframe"
         minSdk = 23
-        targetSdk = 34
-        versionCode = 30
-        versionName = "1.0.30.0"
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        targetSdk = 35
+        versionCode = 31
+        versionName = "1.0.31.0"
     }
 
     buildTypes {

@@ -1,5 +1,7 @@
 package com.immichframe.immichframe
 
+import android.animation.ObjectAnimator
+import android.animation.PropertyValuesHolder
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
@@ -149,9 +151,12 @@ class ScreenSaverService : DreamService() {
                             decodedThumbHash.size
                         )
 
-                        imageView.animate().alpha(0f)
+                        imageView.animate()
+                            .alpha(0f)
                             .setDuration((serverSettings.transitionDuration * 1000).toLong())
                             .withEndAction {
+                                imageView.scaleX = 1f
+                                imageView.scaleY = 1f
                                 imageView.setImageBitmap(randomBitmap)
                                 if (blurredBackground) {
                                     imageView.background =
@@ -160,8 +165,16 @@ class ScreenSaverService : DreamService() {
                                     imageView.background = null
                                 }
 
-                                imageView.animate().alpha(1f)
+                                imageView.animate()
+                                    .alpha(1f)
+                                    .scaleX(1f)
+                                    .scaleY(1f)
                                     .setDuration((serverSettings.transitionDuration * 1000).toLong())
+                                    .withEndAction {
+                                        if (serverSettings.imageZoom) {
+                                            startZoomAnimation(imageView)
+                                        }
+                                    }
                                     .start()
                             }
                             .start()
@@ -221,6 +234,16 @@ class ScreenSaverService : DreamService() {
                 ).show()
             }
         })
+    }
+
+    private fun startZoomAnimation(imageView: ImageView) {
+        val zoomIn = ObjectAnimator.ofPropertyValuesHolder(
+            imageView,
+            PropertyValuesHolder.ofFloat("scaleX", 1f, 1.2f),
+            PropertyValuesHolder.ofFloat("scaleY", 1f, 1.2f)
+        )
+        zoomIn.duration = (serverSettings.interval * 1000).toLong()
+        zoomIn.start()
     }
 
     private fun getWeather() {
