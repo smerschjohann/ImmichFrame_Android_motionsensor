@@ -340,6 +340,11 @@ class MainActivity : AppCompatActivity() {
         useWebView = sharedPreferences.getBoolean("useWebView", true)
         val authSecret = sharedPreferences.getString("authSecret", "") ?: ""
 
+        webView.visibility = if (useWebView) View.VISIBLE else View.GONE
+        imageView.visibility = if (useWebView) View.GONE else View.VISIBLE
+        txtPhotoInfo.visibility = View.GONE
+        txtDateTime.visibility = View.GONE
+
         if (useWebView) {
             savedUrl = if (authSecret.isNotEmpty()) {
                 Uri.parse(savedUrl)
@@ -352,11 +357,6 @@ class MainActivity : AppCompatActivity() {
             }
 
             handler.removeCallbacksAndMessages(null)
-            webView.visibility = View.VISIBLE
-            imageView.visibility = View.GONE
-            txtPhotoInfo.visibility = View.GONE
-            txtDateTime.visibility = View.GONE
-            webView.settings.javaScriptEnabled = true
             webView.webViewClient = object : WebViewClient() {
                 override fun shouldOverrideUrlLoading(
                     view: WebView?,
@@ -386,8 +386,6 @@ class MainActivity : AppCompatActivity() {
             webView.settings.domStorageEnabled = true
             webView.loadUrl(savedUrl)
         } else {
-            webView.visibility = View.GONE
-            imageView.visibility = View.VISIBLE
             retrofit = createRetrofit(savedUrl, authSecret)
             apiService = retrofit!!.create(ApiService::class.java)
             getServerSettings(
