@@ -46,5 +46,29 @@
             android:text=""
             android:textSize="16sp"
             android:visibility="gone" />
+
+        <Button
+            android:id="@+id/btnPrevious"
+            android:layout_width="100dp"
+            android:layout_height="100dp"
+            android:layout_gravity="center_vertical|start"
+            android:background="@android:color/transparent"
+            android:visibility="gone" />
+
+        <Button
+            android:id="@+id/btnPause"
+            android:layout_width="100dp"
+            android:layout_height="100dp"
+            android:layout_gravity="center"
+            android:background="@android:color/transparent"
+            android:visibility="gone" />
+
+        <Button
+            android:id="@+id/btnNext"
+            android:layout_width="100dp"
+            android:layout_height="100dp"
+            android:layout_gravity="center_vertical|end"
+            android:background="@android:color/transparent"
+            android:visibility="gone" />
     </FrameLayout>
 </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>

@@ -48,12 +48,22 @@ class ScreenSaverService : DreamService() {
     private lateinit var serverSettings: ServerSettings
     private var retrofit: Retrofit? = null
     private lateinit var apiService: ApiService
-    private var isImageTimerRunning = false
     private var isWeatherTimerRunning = false
-    private val handler = Handler(Looper.getMainLooper())
     private var useWebView = true
     private var blurredBackground = true
     private var currentWeather = ""
+    private var isImageTimerRunning = false
+    private val handler = Handler(Looper.getMainLooper())
+    private var previousImage: ImageResponse? = null
+    private var currentImage: ImageResponse? = null
+    private val imageRunnable = object : Runnable {
+        override fun run() {
+            if (isImageTimerRunning) {
+                handler.postDelayed(this, (serverSettings.interval * 1000).toLong())
+                getNextImage()
+            }
+        }
+    }
 
     data class ImageResponse(
         val randomImageBase64: String,
@@ -128,93 +138,98 @@ class ScreenSaverService : DreamService() {
         handler.removeCallbacksAndMessages(null)
     }
 
+    private fun showImage(imageResponse: ImageResponse) {
+        val decodedRandomImage =
+            Base64.decode(imageResponse.randomImageBase64, Base64.DEFAULT)
+        val decodedThumbHash =
+            Base64.decode(imageResponse.thumbHashImageBase64, Base64.DEFAULT)
+
+        val randomBitmap = BitmapFactory.decodeByteArray(
+            decodedRandomImage,
+            0,
+            decodedRandomImage.size
+        )
+        val thumbHashBitmap = BitmapFactory.decodeByteArray(
+            decodedThumbHash,
+            0,
+            decodedThumbHash.size
+        )
+
+        imageView.animate()
+            .alpha(0f)
+            .setDuration((serverSettings.transitionDuration * 1000).toLong())
+            .withEndAction {
+                imageView.scaleX = 1f
+                imageView.scaleY = 1f
+                imageView.setImageBitmap(randomBitmap)
+                if (blurredBackground) {
+                    imageView.background =
+                        BitmapDrawable(resources, thumbHashBitmap)
+                } else {
+                    imageView.background = null
+                }
+
+                imageView.animate()
+                    .alpha(1f)
+                    .scaleX(1f)
+                    .scaleY(1f)
+                    .setDuration((serverSettings.transitionDuration * 1000).toLong())
+                    .withEndAction {
+                        if (serverSettings.imageZoom) {
+                            startZoomAnimation(imageView)
+                        }
+                    }
+                    .start()
+            }
+            .start()
+
+        if (serverSettings.showPhotoDate || serverSettings.showImageLocation) {
+            val photoInfo = buildString {
+                if (serverSettings.showPhotoDate && imageResponse.photoDate.isNotEmpty()) {
+                    append(imageResponse.photoDate)
+                }
+                if (serverSettings.showImageLocation && imageResponse.imageLocation.isNotEmpty()) {
+                    if (isNotEmpty()) append("\n")
+                    append(imageResponse.imageLocation)
+                }
+            }
+            txtPhotoInfo.text = photoInfo
+        }
+
+        if (serverSettings.showClock) {
+            val currentDateTime = Calendar.getInstance().time
+            val dateFormatter = SimpleDateFormat(
+                serverSettings.photoDateFormat,
+                Locale.getDefault()
+            )
+            val timeFormatter =
+                SimpleDateFormat(serverSettings.clockFormat, Locale.getDefault())
+            val formattedDate = dateFormatter.format(currentDateTime)
+            val formattedTime = timeFormatter.format(currentDateTime)
+            val dt = "$formattedDate\n$formattedTime"
+            val spannableString = SpannableString(dt)
+            spannableString.setSpan(
+                RelativeSizeSpan(2f),
+                formattedDate.length + 1,
+                dt.length,
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+            txtDateTime.text = spannableString
+        }
+        if (serverSettings.showWeatherDescription) {
+            txtDateTime.append(currentWeather)
+        }
+    }
+
     private fun getNextImage() {
-        apiService.getImageData().enqueue(object :
-            Callback<ImageResponse> {
+        apiService.getImageData().enqueue(object : Callback<ImageResponse> {
             override fun onResponse(call: Call<ImageResponse>, response: Response<ImageResponse>) {
                 if (response.isSuccessful) {
                     val imageResponse = response.body()
                     if (imageResponse != null) {
-                        val decodedRandomImage =
-                            Base64.decode(imageResponse.randomImageBase64, Base64.DEFAULT)
-                        val decodedThumbHash =
-                            Base64.decode(imageResponse.thumbHashImageBase64, Base64.DEFAULT)
-
-                        val randomBitmap = BitmapFactory.decodeByteArray(
-                            decodedRandomImage,
-                            0,
-                            decodedRandomImage.size
-                        )
-                        val thumbHashBitmap = BitmapFactory.decodeByteArray(
-                            decodedThumbHash,
-                            0,
-                            decodedThumbHash.size
-                        )
-
-                        imageView.animate()
-                            .alpha(0f)
-                            .setDuration((serverSettings.transitionDuration * 1000).toLong())
-                            .withEndAction {
-                                imageView.scaleX = 1f
-                                imageView.scaleY = 1f
-                                imageView.setImageBitmap(randomBitmap)
-                                if (blurredBackground) {
-                                    imageView.background =
-                                        BitmapDrawable(resources, thumbHashBitmap)
-                                } else {
-                                    imageView.background = null
-                                }
-
-                                imageView.animate()
-                                    .alpha(1f)
-                                    .scaleX(1f)
-                                    .scaleY(1f)
-                                    .setDuration((serverSettings.transitionDuration * 1000).toLong())
-                                    .withEndAction {
-                                        if (serverSettings.imageZoom) {
-                                            startZoomAnimation(imageView)
-                                        }
-                                    }
-                                    .start()
-                            }
-                            .start()
-
-                        if (serverSettings.showPhotoDate || serverSettings.showImageLocation) {
-                            val photoInfo = buildString {
-                                if (serverSettings.showPhotoDate && imageResponse.photoDate.isNotEmpty()) {
-                                    append(imageResponse.photoDate)
-                                }
-                                if (serverSettings.showImageLocation && imageResponse.imageLocation.isNotEmpty()) {
-                                    if (isNotEmpty()) append("\n")
-                                    append(imageResponse.imageLocation)
-                                }
-                            }
-                            txtPhotoInfo.text = photoInfo
-                        }
-
-                        if (serverSettings.showClock) {
-                            val currentDateTime = Calendar.getInstance().time
-                            val dateFormatter = SimpleDateFormat(
-                                serverSettings.photoDateFormat,
-                                Locale.getDefault()
-                            )
-                            val timeFormatter =
-                                SimpleDateFormat(serverSettings.clockFormat, Locale.getDefault())
-                            val formattedDate = dateFormatter.format(currentDateTime)
-                            val formattedTime = timeFormatter.format(currentDateTime)
-                            val dt = "$formattedDate\n$formattedTime"
-                            val spannableString = SpannableString(dt)
-                            spannableString.setSpan(
-                                RelativeSizeSpan(2f),
-                                formattedDate.length + 1,
-                                dt.length,
-                                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-                            )
-                            txtDateTime.text = spannableString
-                        }
-                        if (serverSettings.showWeatherDescription) {
-                            txtDateTime.append(currentWeather)
-                        }
+                        previousImage = currentImage
+                        currentImage = imageResponse
+                        showImage(imageResponse)
                     }
                 } else {
                     Toast.makeText(
@@ -234,6 +249,18 @@ class ScreenSaverService : DreamService() {
                 ).show()
             }
         })
+    }
+
+    private fun startImageTimer() {
+        if (!isImageTimerRunning) {
+            isImageTimerRunning = true
+            handler.postDelayed(imageRunnable, (serverSettings.interval * 1000).toLong())
+        }
+    }
+
+    private fun stopImageTimer() {
+        isImageTimerRunning = false
+        handler.removeCallbacks(imageRunnable)
     }
 
     private fun startZoomAnimation(imageView: ImageView) {
@@ -418,16 +445,8 @@ class ScreenSaverService : DreamService() {
         }
 
         getNextImage()
+        startImageTimer()
 
-        if (!isImageTimerRunning) {
-            isImageTimerRunning = true
-            handler.postDelayed(object : Runnable {
-                override fun run() {
-                    getNextImage()
-                    handler.postDelayed(this, (serverSettings.interval * 1000).toLong())
-                }
-            }, (serverSettings.interval * 1000).toLong())
-        }
         if (serverSettings.showWeatherDescription) {
             getWeather()
             if (!isWeatherTimerRunning) {

@@ -18,6 +18,7 @@ import android.text.Spanned
 import android.text.style.RelativeSizeSpan
 import android.util.Base64
 import android.util.Log
+import android.view.Gravity
 import android.view.KeyEvent
 import android.view.View
 import android.view.WindowInsets
@@ -28,6 +29,7 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
@@ -52,15 +54,28 @@ class MainActivity : AppCompatActivity() {
     private lateinit var imageView: ImageView
     private lateinit var txtPhotoInfo: TextView
     private lateinit var txtDateTime: TextView
+    private lateinit var btnPrevious: Button
+    private lateinit var btnPause: Button
+    private lateinit var btnNext: Button
     private lateinit var serverSettings: ServerSettings
     private var retrofit: Retrofit? = null
     private lateinit var apiService: ApiService
-    private var isImageTimerRunning = false
     private var isWeatherTimerRunning = false
-    private val handler = Handler(Looper.getMainLooper())
     private var useWebView = true
     private var blurredBackground = true
     private var currentWeather = ""
+    private var isImageTimerRunning = false
+    private val handler = Handler(Looper.getMainLooper())
+    private var previousImage: ImageResponse? = null
+    private var currentImage: ImageResponse? = null
+    private val imageRunnable = object : Runnable {
+        override fun run() {
+            if (isImageTimerRunning) {
+                handler.postDelayed(this, (serverSettings.interval * 1000).toLong())
+                getNextImage()
+            }
+        }
+    }
 
     data class ImageResponse(
         val randomImageBase64: String,
@@ -133,16 +148,133 @@ class MainActivity : AppCompatActivity() {
         imageView = findViewById(R.id.imageView)
         txtPhotoInfo = findViewById(R.id.txtPhotoInfo)
         txtDateTime = findViewById(R.id.txtDateTime)
+        btnPrevious = findViewById(R.id.btnPrevious)
+        btnPause = findViewById(R.id.btnPause)
+        btnNext = findViewById(R.id.btnNext)
 
 
         val swipeRefreshLayout = findViewById<SwipeRefreshLayout>(R.id.swipeRefreshLayout)
         swipeRefreshLayout.setOnRefreshListener {
             swipeRefreshLayout.isRefreshing = false
             val intent = Intent(this, SettingsActivity::class.java)
+            stopImageTimer()
             settingsLauncher.launch(intent)
         }
+        btnPrevious.setOnClickListener {
+            val toast = Toast.makeText(this, "Previous", Toast.LENGTH_SHORT)
+            toast.setGravity(Gravity.CENTER_VERTICAL or Gravity.START, 0, 0)
+            toast.show()
+            if (previousImage != null) {
+                stopImageTimer()
+                previousImage?.let { it1 -> showImage(it1) }
+                startImageTimer()
+            }
+        }
 
+        btnPause.setOnClickListener {
+            val toast = Toast.makeText(this, "Pause", Toast.LENGTH_SHORT)
+            toast.setGravity(Gravity.CENTER, 0, 0)
+            toast.show()
+            if (isImageTimerRunning) {
+                stopImageTimer()
+            } else {
+                getNextImage()
+                startImageTimer()
+            }
+        }
+
+        btnNext.setOnClickListener {
+            val toast = Toast.makeText(this, "Next", Toast.LENGTH_SHORT)
+            toast.setGravity(Gravity.CENTER_VERTICAL or Gravity.END, 0, 0)
+            toast.show()
+            stopImageTimer()
+            getNextImage()
+            startImageTimer()
+        }
         loadSettings()
+    }
+
+    private fun showImage(imageResponse: ImageResponse) {
+        val decodedRandomImage =
+            Base64.decode(imageResponse.randomImageBase64, Base64.DEFAULT)
+        val decodedThumbHash =
+            Base64.decode(imageResponse.thumbHashImageBase64, Base64.DEFAULT)
+
+        val randomBitmap = BitmapFactory.decodeByteArray(
+            decodedRandomImage,
+            0,
+            decodedRandomImage.size
+        )
+        val thumbHashBitmap = BitmapFactory.decodeByteArray(
+            decodedThumbHash,
+            0,
+            decodedThumbHash.size
+        )
+
+        imageView.animate()
+            .alpha(0f)
+            .setDuration((serverSettings.transitionDuration * 1000).toLong())
+            .withEndAction {
+                imageView.scaleX = 1f
+                imageView.scaleY = 1f
+                imageView.setImageBitmap(randomBitmap)
+                if (blurredBackground) {
+                    imageView.background =
+                        BitmapDrawable(resources, thumbHashBitmap)
+                } else {
+                    imageView.background = null
+                }
+
+                imageView.animate()
+                    .alpha(1f)
+                    .scaleX(1f)
+                    .scaleY(1f)
+                    .setDuration((serverSettings.transitionDuration * 1000).toLong())
+                    .withEndAction {
+                        if (serverSettings.imageZoom) {
+                            startZoomAnimation(imageView)
+                        }
+                    }
+                    .start()
+            }
+            .start()
+
+        if (serverSettings.showPhotoDate || serverSettings.showImageLocation) {
+            val photoInfo = buildString {
+                if (serverSettings.showPhotoDate && imageResponse.photoDate.isNotEmpty()) {
+                    append(imageResponse.photoDate)
+                }
+                if (serverSettings.showImageLocation && imageResponse.imageLocation.isNotEmpty()) {
+                    if (isNotEmpty()) append("\n")
+                    append(imageResponse.imageLocation)
+                }
+            }
+            txtPhotoInfo.text = photoInfo
+        }
+
+        if (serverSettings.showClock) {
+            val currentDateTime = Calendar.getInstance().time
+            val dateFormatter = SimpleDateFormat(
+                serverSettings.photoDateFormat,
+                Locale.getDefault()
+            )
+            val timeFormatter =
+                SimpleDateFormat(serverSettings.clockFormat, Locale.getDefault())
+            val formattedDate = dateFormatter.format(currentDateTime)
+            val formattedTime = timeFormatter.format(currentDateTime)
+            val dt = "$formattedDate\n$formattedTime"
+            val spannableString = SpannableString(dt)
+            spannableString.setSpan(
+                RelativeSizeSpan(2f),
+                formattedDate.length + 1,
+                dt.length,
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+            txtDateTime.text = spannableString
+        }
+        if (serverSettings.showWeatherDescription) {
+            txtDateTime.append(currentWeather)
+        }
     }
 
     private fun getNextImage() {
@@ -151,86 +283,9 @@ class MainActivity : AppCompatActivity() {
                 if (response.isSuccessful) {
                     val imageResponse = response.body()
                     if (imageResponse != null) {
-                        val decodedRandomImage =
-                            Base64.decode(imageResponse.randomImageBase64, Base64.DEFAULT)
-                        val decodedThumbHash =
-                            Base64.decode(imageResponse.thumbHashImageBase64, Base64.DEFAULT)
-
-                        val randomBitmap = BitmapFactory.decodeByteArray(
-                            decodedRandomImage,
-                            0,
-                            decodedRandomImage.size
-                        )
-                        val thumbHashBitmap = BitmapFactory.decodeByteArray(
-                            decodedThumbHash,
-                            0,
-                            decodedThumbHash.size
-                        )
-
-                        imageView.animate()
-                            .alpha(0f)
-                            .setDuration((serverSettings.transitionDuration * 1000).toLong())
-                            .withEndAction {
-                                imageView.scaleX = 1f
-                                imageView.scaleY = 1f
-                                imageView.setImageBitmap(randomBitmap)
-                                if (blurredBackground) {
-                                    imageView.background =
-                                        BitmapDrawable(resources, thumbHashBitmap)
-                                } else {
-                                    imageView.background = null
-                                }
-
-                                imageView.animate()
-                                    .alpha(1f)
-                                    .scaleX(1f)
-                                    .scaleY(1f)
-                                    .setDuration((serverSettings.transitionDuration * 1000).toLong())
-                                    .withEndAction {
-                                        if (serverSettings.imageZoom) {
-                                            startZoomAnimation(imageView)
-                                        }
-                                    }
-                                    .start()
-                            }
-                            .start()
-
-                        if (serverSettings.showPhotoDate || serverSettings.showImageLocation) {
-                            val photoInfo = buildString {
-                                if (serverSettings.showPhotoDate && imageResponse.photoDate.isNotEmpty()) {
-                                    append(imageResponse.photoDate)
-                                }
-                                if (serverSettings.showImageLocation && imageResponse.imageLocation.isNotEmpty()) {
-                                    if (isNotEmpty()) append("\n")
-                                    append(imageResponse.imageLocation)
-                                }
-                            }
-                            txtPhotoInfo.text = photoInfo
-                        }
-
-                        if (serverSettings.showClock) {
-                            val currentDateTime = Calendar.getInstance().time
-                            val dateFormatter = SimpleDateFormat(
-                                serverSettings.photoDateFormat,
-                                Locale.getDefault()
-                            )
-                            val timeFormatter =
-                                SimpleDateFormat(serverSettings.clockFormat, Locale.getDefault())
-                            val formattedDate = dateFormatter.format(currentDateTime)
-                            val formattedTime = timeFormatter.format(currentDateTime)
-                            val dt = "$formattedDate\n$formattedTime"
-                            val spannableString = SpannableString(dt)
-                            spannableString.setSpan(
-                                RelativeSizeSpan(2f),
-                                formattedDate.length + 1,
-                                dt.length,
-                                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-                            )
-                            txtDateTime.text = spannableString
-                        }
-                        if (serverSettings.showWeatherDescription) {
-                            txtDateTime.append(currentWeather)
-                        }
+                        previousImage = currentImage
+                        currentImage = imageResponse
+                        showImage(imageResponse)
                     }
                 } else {
                     Toast.makeText(
@@ -250,6 +305,18 @@ class MainActivity : AppCompatActivity() {
                 ).show()
             }
         })
+    }
+
+    private fun startImageTimer() {
+        if (!isImageTimerRunning) {
+            isImageTimerRunning = true
+            handler.postDelayed(imageRunnable, (serverSettings.interval * 1000).toLong())
+        }
+    }
+
+    private fun stopImageTimer() {
+        isImageTimerRunning = false
+        handler.removeCallbacks(imageRunnable)
     }
 
     private fun startZoomAnimation(imageView: ImageView) {
@@ -342,8 +409,11 @@ class MainActivity : AppCompatActivity() {
 
         webView.visibility = if (useWebView) View.VISIBLE else View.GONE
         imageView.visibility = if (useWebView) View.GONE else View.VISIBLE
-        txtPhotoInfo.visibility = View.GONE
-        txtDateTime.visibility = View.GONE
+        btnPrevious.visibility = if (useWebView) View.GONE else View.VISIBLE
+        btnPause.visibility = if (useWebView) View.GONE else View.VISIBLE
+        btnNext.visibility = if (useWebView) View.GONE else View.VISIBLE
+        txtPhotoInfo.visibility = View.GONE //enabled in onSettingsLoaded based on server settings
+        txtDateTime.visibility = View.GONE //enabled in onSettingsLoaded based on server settings
 
         if (useWebView) {
             savedUrl = if (authSecret.isNotEmpty()) {
@@ -432,16 +502,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         getNextImage()
-
-        if (!isImageTimerRunning) {
-            isImageTimerRunning = true
-            handler.postDelayed(object : Runnable {
-                override fun run() {
-                    getNextImage()
-                    handler.postDelayed(this, (serverSettings.interval * 1000).toLong())
-                }
-            }, (serverSettings.interval * 1000).toLong())
-        }
+        startImageTimer()
 
         if (serverSettings.showWeatherDescription) {
             getWeather()
@@ -488,6 +549,7 @@ class MainActivity : AppCompatActivity() {
             when (event.keyCode) {
                 KeyEvent.KEYCODE_DPAD_UP -> {
                     val intent = Intent(this, SettingsActivity::class.java)
+                    stopImageTimer()
                     settingsLauncher.launch(intent)
                     return true
                 }
