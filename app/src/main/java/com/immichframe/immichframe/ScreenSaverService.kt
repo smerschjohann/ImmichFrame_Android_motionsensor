@@ -42,7 +42,8 @@ import java.util.Locale
 class ScreenSaverService : DreamService() {
     private var wakeLock: PowerManager.WakeLock? = null
     private lateinit var webView: WebView
-    private lateinit var imageView: ImageView
+    private lateinit var imageView1: ImageView
+    private lateinit var imageView2: ImageView
     private lateinit var txtPhotoInfo: TextView
     private lateinit var txtDateTime: TextView
     private lateinit var serverSettings: ServerSettings
@@ -64,6 +65,8 @@ class ScreenSaverService : DreamService() {
             }
         }
     }
+    private var isShowingFirst = true
+    private var zoomAnimator: ObjectAnimator? = null
 
     data class ImageResponse(
         val randomImageBase64: String,
@@ -124,7 +127,8 @@ class ScreenSaverService : DreamService() {
         isInteractive = false
         setContentView(R.layout.screen_saver_view)
         webView = findViewById(R.id.webView)
-        imageView = findViewById(R.id.imageView)
+        imageView1 = findViewById(R.id.imageView1)
+        imageView2 = findViewById(R.id.imageView2)
         txtPhotoInfo = findViewById(R.id.txtPhotoInfo)
         txtDateTime = findViewById(R.id.txtDateTime)
 
@@ -134,6 +138,7 @@ class ScreenSaverService : DreamService() {
 
     override fun onDreamingStopped() {
         super.onDreamingStopped()
+        stopImageTimer()
         releaseWakeLock()
         handler.removeCallbacksAndMessages(null)
     }
@@ -154,34 +159,42 @@ class ScreenSaverService : DreamService() {
             0,
             decodedThumbHash.size
         )
+        val imageViewOld = if (isShowingFirst) imageView1 else imageView2
+        val imageViewNew = if (isShowingFirst) imageView2 else imageView1
+        zoomAnimator?.cancel()
+        imageViewNew.alpha = 0f
+        imageViewNew.scaleX = 1f
+        imageViewNew.scaleY = 1f
 
-        imageView.animate()
+        imageViewNew.setImageBitmap(randomBitmap)
+        imageViewNew.visibility = View.VISIBLE
+
+        if (blurredBackground) {
+            imageViewNew.background = BitmapDrawable(resources, thumbHashBitmap)
+        } else {
+            imageViewNew.background = null
+        }
+
+        imageViewNew.animate()
+            .alpha(1f)
+            .setDuration((serverSettings.transitionDuration * 1000).toLong())
+            .withEndAction {
+                if (serverSettings.imageZoom) {
+                    startZoomAnimation(imageViewNew)
+                }
+            }
+            .start()
+
+        imageViewOld.animate()
             .alpha(0f)
             .setDuration((serverSettings.transitionDuration * 1000).toLong())
             .withEndAction {
-                imageView.scaleX = 1f
-                imageView.scaleY = 1f
-                imageView.setImageBitmap(randomBitmap)
-                if (blurredBackground) {
-                    imageView.background =
-                        BitmapDrawable(resources, thumbHashBitmap)
-                } else {
-                    imageView.background = null
-                }
-
-                imageView.animate()
-                    .alpha(1f)
-                    .scaleX(1f)
-                    .scaleY(1f)
-                    .setDuration((serverSettings.transitionDuration * 1000).toLong())
-                    .withEndAction {
-                        if (serverSettings.imageZoom) {
-                            startZoomAnimation(imageView)
-                        }
-                    }
-                    .start()
+                imageViewOld.visibility = View.GONE
             }
             .start()
+
+        // Toggle active ImageView
+        isShowingFirst = !isShowingFirst
 
         if (serverSettings.showPhotoDate || serverSettings.showImageLocation) {
             val photoInfo = buildString {
@@ -220,6 +233,7 @@ class ScreenSaverService : DreamService() {
             txtDateTime.append(currentWeather)
         }
     }
+
 
     private fun getNextImage() {
         apiService.getImageData().enqueue(object : Callback<ImageResponse> {
@@ -264,13 +278,14 @@ class ScreenSaverService : DreamService() {
     }
 
     private fun startZoomAnimation(imageView: ImageView) {
-        val zoomIn = ObjectAnimator.ofPropertyValuesHolder(
+        zoomAnimator?.cancel()
+        zoomAnimator = ObjectAnimator.ofPropertyValuesHolder(
             imageView,
             PropertyValuesHolder.ofFloat("scaleX", 1f, 1.2f),
             PropertyValuesHolder.ofFloat("scaleY", 1f, 1.2f)
         )
-        zoomIn.duration = (serverSettings.interval * 1000).toLong()
-        zoomIn.start()
+        zoomAnimator?.duration = (serverSettings.interval * 1000).toLong()
+        zoomAnimator?.start()
     }
 
     private fun getWeather() {
@@ -352,9 +367,10 @@ class ScreenSaverService : DreamService() {
         val authSecret = sharedPreferences.getString("authSecret", "") ?: ""
 
         webView.visibility = if (useWebView) View.VISIBLE else View.GONE
-        imageView.visibility = if (useWebView) View.GONE else View.VISIBLE
-        txtPhotoInfo.visibility = View.GONE
-        txtDateTime.visibility = View.GONE
+        imageView1.visibility = if (useWebView) View.GONE else View.VISIBLE
+        imageView2.visibility = if (useWebView) View.GONE else View.VISIBLE
+        txtPhotoInfo.visibility = View.GONE //enabled in onSettingsLoaded based on server settings
+        txtDateTime.visibility = View.GONE //enabled in onSettingsLoaded based on server settings
 
         if (useWebView) {
             savedUrl = if (authSecret.isNotEmpty()) {

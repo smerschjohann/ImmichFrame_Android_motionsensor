@@ -51,7 +51,8 @@ import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
     private lateinit var webView: WebView
-    private lateinit var imageView: ImageView
+    private lateinit var imageView1: ImageView
+    private lateinit var imageView2: ImageView
     private lateinit var txtPhotoInfo: TextView
     private lateinit var txtDateTime: TextView
     private lateinit var btnPrevious: Button
@@ -76,6 +77,8 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+    private var isShowingFirst = true
+    private var zoomAnimator: ObjectAnimator? = null
 
     data class ImageResponse(
         val randomImageBase64: String,
@@ -145,7 +148,8 @@ class MainActivity : AppCompatActivity() {
         hideSystemUI()
 
         webView = findViewById(R.id.webView)
-        imageView = findViewById(R.id.imageView)
+        imageView1 = findViewById(R.id.imageView1)
+        imageView2 = findViewById(R.id.imageView2)
         txtPhotoInfo = findViewById(R.id.txtPhotoInfo)
         txtDateTime = findViewById(R.id.txtDateTime)
         btnPrevious = findViewById(R.id.btnPrevious)
@@ -164,9 +168,10 @@ class MainActivity : AppCompatActivity() {
             val toast = Toast.makeText(this, "Previous", Toast.LENGTH_SHORT)
             toast.setGravity(Gravity.CENTER_VERTICAL or Gravity.START, 0, 0)
             toast.show()
-            if (previousImage != null) {
+            val safePreviousImage = previousImage
+            if (safePreviousImage != null) {
                 stopImageTimer()
-                previousImage?.let { it1 -> showImage(it1) }
+                showImage(safePreviousImage)
                 startImageTimer()
             }
         }
@@ -175,6 +180,7 @@ class MainActivity : AppCompatActivity() {
             val toast = Toast.makeText(this, "Pause", Toast.LENGTH_SHORT)
             toast.setGravity(Gravity.CENTER, 0, 0)
             toast.show()
+            zoomAnimator?.cancel()
             if (isImageTimerRunning) {
                 stopImageTimer()
             } else {
@@ -210,34 +216,42 @@ class MainActivity : AppCompatActivity() {
             0,
             decodedThumbHash.size
         )
+        val imageViewOld = if (isShowingFirst) imageView1 else imageView2
+        val imageViewNew = if (isShowingFirst) imageView2 else imageView1
+        zoomAnimator?.cancel()
+        imageViewNew.alpha = 0f
+        imageViewNew.scaleX = 1f
+        imageViewNew.scaleY = 1f
 
-        imageView.animate()
+        imageViewNew.setImageBitmap(randomBitmap)
+        imageViewNew.visibility = View.VISIBLE
+
+        if (blurredBackground) {
+            imageViewNew.background = BitmapDrawable(resources, thumbHashBitmap)
+        } else {
+            imageViewNew.background = null
+        }
+
+        imageViewNew.animate()
+            .alpha(1f)
+            .setDuration((serverSettings.transitionDuration * 1000).toLong())
+            .withEndAction {
+                if (serverSettings.imageZoom) {
+                    startZoomAnimation(imageViewNew)
+                }
+            }
+            .start()
+
+        imageViewOld.animate()
             .alpha(0f)
             .setDuration((serverSettings.transitionDuration * 1000).toLong())
             .withEndAction {
-                imageView.scaleX = 1f
-                imageView.scaleY = 1f
-                imageView.setImageBitmap(randomBitmap)
-                if (blurredBackground) {
-                    imageView.background =
-                        BitmapDrawable(resources, thumbHashBitmap)
-                } else {
-                    imageView.background = null
-                }
-
-                imageView.animate()
-                    .alpha(1f)
-                    .scaleX(1f)
-                    .scaleY(1f)
-                    .setDuration((serverSettings.transitionDuration * 1000).toLong())
-                    .withEndAction {
-                        if (serverSettings.imageZoom) {
-                            startZoomAnimation(imageView)
-                        }
-                    }
-                    .start()
+                imageViewOld.visibility = View.GONE
             }
             .start()
+
+        // Toggle active ImageView
+        isShowingFirst = !isShowingFirst
 
         if (serverSettings.showPhotoDate || serverSettings.showImageLocation) {
             val photoInfo = buildString {
@@ -320,13 +334,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startZoomAnimation(imageView: ImageView) {
-        val zoomIn = ObjectAnimator.ofPropertyValuesHolder(
+        zoomAnimator?.cancel()
+        zoomAnimator = ObjectAnimator.ofPropertyValuesHolder(
             imageView,
             PropertyValuesHolder.ofFloat("scaleX", 1f, 1.2f),
             PropertyValuesHolder.ofFloat("scaleY", 1f, 1.2f)
         )
-        zoomIn.duration = (serverSettings.interval * 1000).toLong()
-        zoomIn.start()
+        zoomAnimator?.duration = (serverSettings.interval * 1000).toLong()
+        zoomAnimator?.start()
     }
 
     private fun getWeather() {
@@ -408,7 +423,8 @@ class MainActivity : AppCompatActivity() {
         val authSecret = sharedPreferences.getString("authSecret", "") ?: ""
 
         webView.visibility = if (useWebView) View.VISIBLE else View.GONE
-        imageView.visibility = if (useWebView) View.GONE else View.VISIBLE
+        imageView1.visibility = if (useWebView) View.GONE else View.VISIBLE
+        imageView2.visibility = if (useWebView) View.GONE else View.VISIBLE
         btnPrevious.visibility = if (useWebView) View.GONE else View.VISIBLE
         btnPause.visibility = if (useWebView) View.GONE else View.VISIBLE
         btnNext.visibility = if (useWebView) View.GONE else View.VISIBLE
