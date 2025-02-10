@@ -59,6 +59,7 @@
             android:layout_height="100dp"
             android:layout_gravity="center_vertical|start"
             android:background="@android:color/transparent"
+            android:layout_marginStart="16dp"
             android:visibility="gone" />
 
         <Button
@@ -75,6 +76,7 @@
             android:layout_height="100dp"
             android:layout_gravity="center_vertical|end"
             android:background="@android:color/transparent"
+            android:layout_marginEnd="16dp"
             android:visibility="gone" />
     </FrameLayout>
 </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
