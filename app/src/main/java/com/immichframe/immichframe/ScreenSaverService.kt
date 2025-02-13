@@ -79,7 +79,7 @@ class ScreenSaverService : DreamService() {
         val imageStretch: String,
         val margin: String,
         val interval: Int,
-        val transitionDuration: Int,
+        val transitionDuration: Double,
         val downloadImages: Boolean,
         val renewImagesDuration: Int,
         val showClock: Boolean,
