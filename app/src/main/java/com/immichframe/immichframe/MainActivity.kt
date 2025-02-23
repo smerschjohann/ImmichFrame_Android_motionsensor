@@ -5,6 +5,7 @@ import android.animation.PropertyValuesHolder
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.drawable.BitmapDrawable
@@ -37,14 +38,12 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.WindowCompat
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
-import com.immichframe.immichframe.helpers.TextSizeHelper
 import okhttp3.OkHttpClient
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
-import retrofit2.http.GET
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -58,17 +57,18 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnPrevious: Button
     private lateinit var btnPause: Button
     private lateinit var btnNext: Button
-    private lateinit var serverSettings: ServerSettings
+    private lateinit var serverSettings: Helpers.ServerSettings
     private var retrofit: Retrofit? = null
-    private lateinit var apiService: ApiService
+    private lateinit var apiService: Helpers.ApiService
     private var isWeatherTimerRunning = false
     private var useWebView = true
     private var blurredBackground = true
     private var currentWeather = ""
     private var isImageTimerRunning = false
     private val handler = Handler(Looper.getMainLooper())
-    private var previousImage: ImageResponse? = null
-    private var currentImage: ImageResponse? = null
+    private var previousImage: Helpers.ImageResponse? = null
+    private var currentImage: Helpers.ImageResponse? = null
+    private var portraitCache: Helpers.ImageResponse? = null
     private val imageRunnable = object : Runnable {
         override fun run() {
             if (isImageTimerRunning) {
@@ -79,59 +79,6 @@ class MainActivity : AppCompatActivity() {
     }
     private var isShowingFirst = true
     private var zoomAnimator: ObjectAnimator? = null
-
-    data class ImageResponse(
-        val randomImageBase64: String,
-        val thumbHashImageBase64: String,
-        val photoDate: String,
-        val imageLocation: String
-    )
-
-    data class ServerSettings(
-        val imageStretch: String,
-        val margin: String,
-        val interval: Int,
-        val transitionDuration: Double,
-        val downloadImages: Boolean,
-        val renewImagesDuration: Int,
-        val showClock: Boolean,
-        val clockFormat: String,
-        val showPhotoDate: Boolean,
-        val photoDateFormat: String,
-        val showImageDesc: Boolean,
-        val showPeopleDesc: Boolean,
-        val showImageLocation: Boolean,
-        val imageLocationFormat: String,
-        val primaryColor: String?,
-        val secondaryColor: String,
-        val style: String,
-        val baseFontSize: String?,
-        val showWeatherDescription: Boolean,
-        val unattendedMode: Boolean,
-        val imageZoom: Boolean,
-        val layout: String,
-        val language: String
-    )
-
-    data class Weather(
-        val location: String,
-        val temperature: Double,
-        val unit: String,
-        val temperatureUnit: String,
-        val description: String,
-        val iconId: String
-    )
-
-    interface ApiService {
-        @GET("api/Asset/RandomImageAndInfo")
-        fun getImageData(): Call<ImageResponse>
-
-        @GET("api/Config")
-        fun getServerSettings(): Call<ServerSettings>
-
-        @GET("api/Weather")
-        fun getWeather(): Call<Weather>
-    }
 
     private val settingsLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -155,7 +102,6 @@ class MainActivity : AppCompatActivity() {
         btnPrevious = findViewById(R.id.btnPrevious)
         btnPause = findViewById(R.id.btnPause)
         btnNext = findViewById(R.id.btnNext)
-
 
         val swipeRefreshLayout = findViewById<SwipeRefreshLayout>(R.id.swipeRefreshLayout)
         swipeRefreshLayout.setOnRefreshListener {
@@ -200,22 +146,36 @@ class MainActivity : AppCompatActivity() {
         loadSettings()
     }
 
-    private fun showImage(imageResponse: ImageResponse) {
-        val decodedRandomImage =
-            Base64.decode(imageResponse.randomImageBase64, Base64.DEFAULT)
-        val decodedThumbHash =
-            Base64.decode(imageResponse.thumbHashImageBase64, Base64.DEFAULT)
+    private fun showImage(imageResponse: Helpers.ImageResponse) {
+        val randomBitmap = Helpers.decodeBitmapFromBytes(imageResponse.randomImageBase64)
+        val thumbHashBitmap = Helpers.decodeBitmapFromBytes(imageResponse.thumbHashImageBase64)
+        val finalImage: Bitmap?
+        var isMerged = false
+        val isPortrait = randomBitmap.height > randomBitmap.width
+        if (isPortrait && serverSettings.layout == "splitview") {
+            if (portraitCache != null) {
+                val decodedPortraitCacheImage =
+                    Base64.decode(portraitCache!!.randomImageBase64, Base64.DEFAULT)
+                val decodedPortraitImageBitmap = BitmapFactory.decodeByteArray(
+                    decodedPortraitCacheImage,
+                    0,
+                    decodedPortraitCacheImage.size
+                )
 
-        val randomBitmap = BitmapFactory.decodeByteArray(
-            decodedRandomImage,
-            0,
-            decodedRandomImage.size
-        )
-        val thumbHashBitmap = BitmapFactory.decodeByteArray(
-            decodedThumbHash,
-            0,
-            decodedThumbHash.size
-        )
+                val colorString =
+                    serverSettings.primaryColor?.takeIf { it.isNotBlank() } ?: "#FFFFFF"
+                val parsedColor = Color.parseColor(colorString)
+                finalImage =
+                    Helpers.mergeImages(decodedPortraitImageBitmap, randomBitmap, parsedColor)
+                isMerged = true
+            } else {
+                portraitCache = imageResponse
+                getNextImage()
+                return
+            }
+        } else {
+            finalImage = randomBitmap
+        }
         val imageViewOld = if (isShowingFirst) imageView1 else imageView2
         val imageViewNew = if (isShowingFirst) imageView2 else imageView1
         zoomAnimator?.cancel()
@@ -223,7 +183,7 @@ class MainActivity : AppCompatActivity() {
         imageViewNew.scaleX = 1f
         imageViewNew.scaleY = 1f
 
-        imageViewNew.setImageBitmap(randomBitmap)
+        imageViewNew.setImageBitmap(finalImage)
         imageViewNew.visibility = View.VISIBLE
 
         if (blurredBackground) {
@@ -253,19 +213,34 @@ class MainActivity : AppCompatActivity() {
         // Toggle active ImageView
         isShowingFirst = !isShowingFirst
 
+        if (isMerged) {
+            updatePhotoInfo(
+                portraitCache!!.photoDate + " | " + imageResponse.photoDate,
+                portraitCache!!.imageLocation + " | " + imageResponse.imageLocation
+            )
+            portraitCache = null
+        } else {
+            updatePhotoInfo(imageResponse.photoDate, imageResponse.imageLocation)
+        }
+        updateDateTimeWeather()
+    }
+
+    private fun updatePhotoInfo(photoDate: String, photoLocation: String) {
         if (serverSettings.showPhotoDate || serverSettings.showImageLocation) {
             val photoInfo = buildString {
-                if (serverSettings.showPhotoDate && imageResponse.photoDate.isNotEmpty()) {
-                    append(imageResponse.photoDate)
+                if (serverSettings.showPhotoDate && photoDate.isNotEmpty()) {
+                    append(photoDate)
                 }
-                if (serverSettings.showImageLocation && imageResponse.imageLocation.isNotEmpty()) {
+                if (serverSettings.showImageLocation && photoLocation.isNotEmpty()) {
                     if (isNotEmpty()) append("\n")
-                    append(imageResponse.imageLocation)
+                    append(photoLocation)
                 }
             }
             txtPhotoInfo.text = photoInfo
         }
+    }
 
+    private fun updateDateTimeWeather() {
         if (serverSettings.showClock) {
             val currentDateTime = Calendar.getInstance().time
             val dateFormatter = SimpleDateFormat(
@@ -292,8 +267,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun getNextImage() {
-        apiService.getImageData().enqueue(object : Callback<ImageResponse> {
-            override fun onResponse(call: Call<ImageResponse>, response: Response<ImageResponse>) {
+        apiService.getImageData().enqueue(object : Callback<Helpers.ImageResponse> {
+            override fun onResponse(
+                call: Call<Helpers.ImageResponse>,
+                response: Response<Helpers.ImageResponse>
+            ) {
                 if (response.isSuccessful) {
                     val imageResponse = response.body()
                     if (imageResponse != null) {
@@ -310,7 +288,7 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
-            override fun onFailure(call: Call<ImageResponse>, t: Throwable) {
+            override fun onFailure(call: Call<Helpers.ImageResponse>, t: Throwable) {
                 t.printStackTrace()
                 Toast.makeText(
                     this@MainActivity,
@@ -345,25 +323,28 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun getWeather() {
-        apiService.getWeather().enqueue(object : Callback<Weather> {
-            override fun onResponse(call: Call<Weather>, response: Response<Weather>) {
+        apiService.getWeather().enqueue(object : Callback<Helpers.Weather> {
+            override fun onResponse(
+                call: Call<Helpers.Weather>,
+                response: Response<Helpers.Weather>
+            ) {
                 if (response.isSuccessful) {
                     val weatherResponse = response.body()
                     if (weatherResponse != null) {
                         currentWeather =
-                            "\n ${weatherResponse.location}, ${weatherResponse.temperatureUnit} \n ${weatherResponse.description}"
+                            "\n ${weatherResponse.location}, ${"%.1f".format(weatherResponse.temperature)}${weatherResponse.unit} \n ${weatherResponse.description}"
                     }
                 }
             }
 
-            override fun onFailure(call: Call<Weather>, t: Throwable) {
+            override fun onFailure(call: Call<Helpers.Weather>, t: Throwable) {
                 Log.e("Weather", "Failed to fetch weather: ${t.message}")
             }
         })
     }
 
     private fun getServerSettings(
-        onSuccess: (ServerSettings) -> Unit,
+        onSuccess: (Helpers.ServerSettings) -> Unit,
         onFailure: (Throwable) -> Unit,
         maxRetries: Int = 36,
         retryDelayMillis: Long = 5000
@@ -371,10 +352,10 @@ class MainActivity : AppCompatActivity() {
         var retryCount = 0
 
         fun attemptFetch() {
-            apiService.getServerSettings().enqueue(object : Callback<ServerSettings> {
+            apiService.getServerSettings().enqueue(object : Callback<Helpers.ServerSettings> {
                 override fun onResponse(
-                    call: Call<ServerSettings>,
-                    response: Response<ServerSettings>
+                    call: Call<Helpers.ServerSettings>,
+                    response: Response<Helpers.ServerSettings>
                 ) {
                     if (response.isSuccessful) {
                         val serverSettingsResponse = response.body()
@@ -388,7 +369,7 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
 
-                override fun onFailure(call: Call<ServerSettings>, t: Throwable) {
+                override fun onFailure(call: Call<Helpers.ServerSettings>, t: Throwable) {
                     handleFailure(t)
                 }
 
@@ -473,7 +454,7 @@ class MainActivity : AppCompatActivity() {
             webView.loadUrl(savedUrl)
         } else {
             retrofit = createRetrofit(savedUrl, authSecret)
-            apiService = retrofit!!.create(ApiService::class.java)
+            apiService = retrofit!!.create(Helpers.ApiService::class.java)
             getServerSettings(
                 onSuccess = { settings ->
                     serverSettings = settings
@@ -494,7 +475,7 @@ class MainActivity : AppCompatActivity() {
         if (serverSettings.showPhotoDate || serverSettings.showImageLocation) {
             txtPhotoInfo.visibility = View.VISIBLE
             txtPhotoInfo.textSize =
-                TextSizeHelper.cssFontSizeToSp(serverSettings.baseFontSize, this)
+                Helpers.cssFontSizeToSp(serverSettings.baseFontSize, this)
             if (serverSettings.primaryColor != null) {
                 txtPhotoInfo.setTextColor(
                     runCatching { Color.parseColor(serverSettings.primaryColor) }.getOrDefault(Color.WHITE)
@@ -505,7 +486,7 @@ class MainActivity : AppCompatActivity() {
         }
         if (serverSettings.showClock) {
             txtDateTime.visibility = View.VISIBLE
-            txtDateTime.textSize = TextSizeHelper.cssFontSizeToSp(serverSettings.baseFontSize, this)
+            txtDateTime.textSize = Helpers.cssFontSizeToSp(serverSettings.baseFontSize, this)
             if (serverSettings.primaryColor != null) {
                 txtDateTime.setTextColor(
                     runCatching { Color.parseColor(serverSettings.primaryColor) }.getOrDefault(Color.WHITE)
