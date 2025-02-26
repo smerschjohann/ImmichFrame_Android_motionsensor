@@ -158,14 +158,24 @@ class ScreenSaverService : DreamService() {
         isShowingFirst = !isShowingFirst
 
         if (isMerged) {
-            updatePhotoInfo(
-                portraitCache!!.photoDate + " | " + imageResponse.photoDate,
-                portraitCache!!.imageLocation + " | " + imageResponse.imageLocation
-            )
+            val mergedPhotoDate = if (portraitCache!!.photoDate.isNotEmpty() || imageResponse.photoDate.isNotEmpty()) {
+                "${portraitCache!!.photoDate} | ${imageResponse.photoDate}"
+            } else {
+                ""
+            }
+
+            val mergedImageLocation = if (portraitCache!!.imageLocation.isNotEmpty() || imageResponse.imageLocation.isNotEmpty()) {
+                "${portraitCache!!.imageLocation} | ${imageResponse.imageLocation}"
+            } else {
+                ""
+            }
+
+            updatePhotoInfo(mergedPhotoDate, mergedImageLocation)
             portraitCache = null
         } else {
             updatePhotoInfo(imageResponse.photoDate, imageResponse.imageLocation)
         }
+
         updateDateTimeWeather()
     }
 
