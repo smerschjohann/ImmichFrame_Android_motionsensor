@@ -63,16 +63,26 @@ object Helpers {
         val lineWidth = 10
         val targetHeight = maxOf(leftImage.height, rightImage.height)
 
-        // Scale images while maintaining aspect ratio (scaleAspectFit)
+        // Scale images efficiently
         val scaledLeftImage = scaleAspectFit(leftImage, targetHeight)
         val scaledRightImage = scaleAspectFit(rightImage, targetHeight)
 
         val width = scaledLeftImage.width + scaledRightImage.width + lineWidth
-        val result = Bitmap.createBitmap(width, targetHeight, Bitmap.Config.RGB_565)
+
+        // Try to allocate a smaller Bitmap if memory is tight
+        val result = try {
+            Bitmap.createBitmap(width, targetHeight, Bitmap.Config.RGB_565)
+        } catch (e: OutOfMemoryError) {
+            System.gc()
+            Bitmap.createBitmap(width / 2, targetHeight / 2, Bitmap.Config.RGB_565) // Fallback with smaller bitmap
+        }
+
         val canvas = Canvas(result)
 
+        // Draw left image
         canvas.drawBitmap(scaledLeftImage, 0f, 0f, null)
 
+        // Draw separating line
         val paint = Paint().apply {
             color = lineColor
             style = Paint.Style.FILL
@@ -85,11 +95,14 @@ object Helpers {
             paint
         )
 
+        // Draw right image
         canvas.drawBitmap(scaledRightImage, (scaledLeftImage.width + lineWidth).toFloat(), 0f, null)
 
+        // Recycle old bitmaps ASAP
+        leftImage.recycle()
+        rightImage.recycle()
         scaledLeftImage.recycle()
         scaledRightImage.recycle()
-        System.gc() // Request garbage collection
 
         return result
     }
@@ -97,8 +110,27 @@ object Helpers {
     private fun scaleAspectFit(image: Bitmap, targetHeight: Int): Bitmap {
         val aspectRatio = image.width.toFloat() / image.height.toFloat()
         val targetWidth = (targetHeight * aspectRatio).toInt()
+
+        BitmapFactory.Options().apply {
+            inPreferredConfig = Bitmap.Config.RGB_565 // Reduce memory usage
+            inSampleSize = calculateInSampleSize(image.width, image.height, targetWidth, targetHeight)
+        }
+
         return Bitmap.createScaledBitmap(image, targetWidth, targetHeight, true)
     }
+
+    private fun calculateInSampleSize(origWidth: Int, origHeight: Int, reqWidth: Int, reqHeight: Int): Int {
+        var inSampleSize = 1
+        if (origHeight > reqHeight || origWidth > reqWidth) {
+            val halfHeight = origHeight / 2
+            val halfWidth = origWidth / 2
+            while ((halfHeight / inSampleSize) >= reqHeight && (halfWidth / inSampleSize) >= reqWidth) {
+                inSampleSize *= 2
+            }
+        }
+        return inSampleSize
+    }
+
 
 
     fun decodeBitmapFromBytes(data: String): Bitmap {
