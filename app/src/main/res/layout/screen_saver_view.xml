@@ -34,6 +34,10 @@
         android:background="@android:color/transparent"
         android:gravity="center"
         android:padding="8dp"
+        android:shadowColor="#99000000"
+        android:shadowDx="2"
+        android:shadowDy="2"
+        android:shadowRadius="4"
         android:text=""
         android:textSize="16sp"
         android:visibility="gone" />
@@ -46,6 +50,10 @@
         android:background="@android:color/transparent"
         android:gravity="center"
         android:padding="8dp"
+        android:shadowColor="#99000000"
+        android:shadowDx="2"
+        android:shadowDy="2"
+        android:shadowRadius="4"
         android:text=""
         android:textSize="16sp"
         android:visibility="gone" />
