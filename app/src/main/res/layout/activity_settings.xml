@@ -54,6 +54,15 @@
         android:visibility="gone"
         tools:ignore="HardcodedText" />
 
+    <androidx.appcompat.widget.SwitchCompat
+        android:id="@+id/chkShowCurrentDate"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="20dp"
+        android:text="Show Current Date?"
+        android:visibility="gone"
+        tools:ignore="HardcodedText" />
+
     <Button
         android:id="@+id/buttonAndroidSettings"
         android:layout_width="wrap_content"

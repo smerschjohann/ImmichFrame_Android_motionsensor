@@ -15,6 +15,7 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var buttonSaveUrl: Button
     private lateinit var chkUseWebView: androidx.appcompat.widget.SwitchCompat
     private lateinit var chkBlurredBackground: androidx.appcompat.widget.SwitchCompat
+    private lateinit var chkShowCurrentDate: androidx.appcompat.widget.SwitchCompat
     private lateinit var buttonAndroidSettings: Button
     private lateinit var editTextAuthSecret: EditText
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -25,6 +26,7 @@ class SettingsActivity : AppCompatActivity() {
         buttonSaveUrl = findViewById(R.id.buttonSaveUrl)
         chkUseWebView = findViewById(R.id.chkUseWebView)
         chkBlurredBackground = findViewById(R.id.chkBlurredBackground)
+        chkShowCurrentDate = findViewById(R.id.chkShowCurrentDate)
         buttonAndroidSettings = findViewById(R.id.buttonAndroidSettings)
         editTextAuthSecret = findViewById(R.id.editTextAuthSecret)
 
@@ -54,9 +56,11 @@ class SettingsActivity : AppCompatActivity() {
     private fun additionalSettingsVisibility(isChecked: Boolean) {
         if (isChecked) {
             chkBlurredBackground.visibility = View.GONE
+            chkShowCurrentDate.visibility = View.GONE
             buttonAndroidSettings.visibility = View.GONE
         } else {
             chkBlurredBackground.visibility = View.VISIBLE
+            chkShowCurrentDate.visibility = View.VISIBLE
             buttonAndroidSettings.visibility = View.VISIBLE
         }
     }
@@ -65,7 +69,9 @@ class SettingsActivity : AppCompatActivity() {
         val sharedPreferences = getSharedPreferences("ImmichFramePrefs", MODE_PRIVATE)
         val savedUrl = sharedPreferences.getString("webview_url", getString(R.string.webview_url))
         val blurredBackground = sharedPreferences.getBoolean("blurredBackground", true)
+        val showCurrentDate = sharedPreferences.getBoolean("showCurrentDate", true)
         chkBlurredBackground.isChecked = blurredBackground
+        chkShowCurrentDate.isChecked = showCurrentDate
         val useWebView = sharedPreferences.getBoolean("useWebView", true)
         val authSecret = sharedPreferences.getString("authSecret", "") ?: ""
         chkUseWebView.isChecked = useWebView
@@ -77,11 +83,13 @@ class SettingsActivity : AppCompatActivity() {
     private fun saveSettings(url: String, authSecret: String) {
         val useWebView = chkUseWebView.isChecked
         val blurredBackground = chkBlurredBackground.isChecked
+        val showCurrentDate = chkShowCurrentDate.isChecked
         val sharedPreferences = getSharedPreferences("ImmichFramePrefs", MODE_PRIVATE)
         with(sharedPreferences.edit()) {
             putString("webview_url", url)
             putBoolean("useWebView", useWebView)
             putBoolean("blurredBackground", blurredBackground)
+            putBoolean("showCurrentDate", showCurrentDate)
             putString("authSecret", authSecret)
             apply()
         }

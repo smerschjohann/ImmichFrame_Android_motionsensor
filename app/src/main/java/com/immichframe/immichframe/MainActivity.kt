@@ -63,6 +63,7 @@ class MainActivity : AppCompatActivity() {
     private var isWeatherTimerRunning = false
     private var useWebView = true
     private var blurredBackground = true
+    private var showCurrentDate = true
     private var currentWeather = ""
     private var isImageTimerRunning = false
     private val handler = Handler(Looper.getMainLooper())
@@ -214,17 +215,19 @@ class MainActivity : AppCompatActivity() {
         isShowingFirst = !isShowingFirst
 
         if (isMerged) {
-            val mergedPhotoDate = if (portraitCache!!.photoDate.isNotEmpty() || imageResponse.photoDate.isNotEmpty()) {
-                "${portraitCache!!.photoDate} | ${imageResponse.photoDate}"
-            } else {
-                ""
-            }
+            val mergedPhotoDate =
+                if (portraitCache!!.photoDate.isNotEmpty() || imageResponse.photoDate.isNotEmpty()) {
+                    "${portraitCache!!.photoDate} | ${imageResponse.photoDate}"
+                } else {
+                    ""
+                }
 
-            val mergedImageLocation = if (portraitCache!!.imageLocation.isNotEmpty() || imageResponse.imageLocation.isNotEmpty()) {
-                "${portraitCache!!.imageLocation} | ${imageResponse.imageLocation}"
-            } else {
-                ""
-            }
+            val mergedImageLocation =
+                if (portraitCache!!.imageLocation.isNotEmpty() || imageResponse.imageLocation.isNotEmpty()) {
+                    "${portraitCache!!.imageLocation} | ${imageResponse.imageLocation}"
+                } else {
+                    ""
+                }
 
             updatePhotoInfo(mergedPhotoDate, mergedImageLocation)
             portraitCache = null
@@ -253,24 +256,19 @@ class MainActivity : AppCompatActivity() {
     private fun updateDateTimeWeather() {
         if (serverSettings.showClock) {
             val currentDateTime = Calendar.getInstance().time
-            val dateFormatter = SimpleDateFormat(
-                serverSettings.photoDateFormat,
-                Locale.getDefault()
-            )
-            val timeFormatter =
-                SimpleDateFormat(serverSettings.clockFormat, Locale.getDefault())
+            val dateFormatter = SimpleDateFormat(serverSettings.photoDateFormat, Locale.getDefault())
+            val timeFormatter = SimpleDateFormat(serverSettings.clockFormat, Locale.getDefault())
+
             val formattedDate = dateFormatter.format(currentDateTime)
             val formattedTime = timeFormatter.format(currentDateTime)
-            val dt = "$formattedDate\n$formattedTime"
-            val spannableString = SpannableString(dt)
-            spannableString.setSpan(
-                RelativeSizeSpan(2f),
-                formattedDate.length + 1,
-                dt.length,
-                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-            )
-            txtDateTime.text = spannableString
+            val dt = if (showCurrentDate) "$formattedDate\n$formattedTime" else formattedTime
+
+            txtDateTime.text = SpannableString(dt).apply {
+                val start = if (showCurrentDate) formattedDate.length + 1 else 0
+                setSpan(RelativeSizeSpan(2f), start, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            }
         }
+
         if (serverSettings.showWeatherDescription) {
             txtDateTime.append(currentWeather)
         }
@@ -408,6 +406,7 @@ class MainActivity : AppCompatActivity() {
     private fun loadSettings() {
         val sharedPreferences = getSharedPreferences("ImmichFramePrefs", MODE_PRIVATE)
         blurredBackground = sharedPreferences.getBoolean("blurredBackground", true)
+        showCurrentDate = sharedPreferences.getBoolean("showCurrentDate", true)
         var savedUrl =
             sharedPreferences.getString("webview_url", getString(R.string.webview_url)) ?: ""
         useWebView = sharedPreferences.getBoolean("useWebView", true)
