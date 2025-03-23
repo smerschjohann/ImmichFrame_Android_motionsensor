@@ -3,8 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="16dp"
-    android:background="#F5F5F5" >
+    android:padding="16dp">
 
     <TextView
         android:layout_width="match_parent"
@@ -38,13 +37,28 @@
         android:inputType="textPassword"
         tools:ignore="HardcodedText" />
 
-    <androidx.appcompat.widget.SwitchCompat
-        android:id="@+id/chkUseWebView"
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginBottom="20dp"
-        android:text="Use WebView?"
-        tools:ignore="HardcodedText" />
+        android:orientation="horizontal">
+
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/chkUseWebView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Use WebView?"
+            tools:ignore="HardcodedText" />
+
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/chkKeepScreenOn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:text="Keep Screen On?"
+            tools:ignore="HardcodedText" />
+
+    </LinearLayout>
 
     <androidx.appcompat.widget.SwitchCompat
         android:id="@+id/chkBlurredBackground"

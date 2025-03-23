@@ -62,6 +62,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var apiService: Helpers.ApiService
     private var isWeatherTimerRunning = false
     private var useWebView = true
+    private var keepScreenOn = true
     private var blurredBackground = true
     private var showCurrentDate = true
     private var currentWeather = ""
@@ -257,7 +258,8 @@ class MainActivity : AppCompatActivity() {
     private fun updateDateTimeWeather() {
         if (serverSettings.showClock) {
             val currentDateTime = Calendar.getInstance().time
-            val dateFormatter = SimpleDateFormat(serverSettings.photoDateFormat, Locale.getDefault())
+            val dateFormatter =
+                SimpleDateFormat(serverSettings.photoDateFormat, Locale.getDefault())
             val timeFormatter = SimpleDateFormat(serverSettings.clockFormat, Locale.getDefault())
 
             val formattedDate = dateFormatter.format(currentDateTime)
@@ -411,6 +413,7 @@ class MainActivity : AppCompatActivity() {
         var savedUrl =
             sharedPreferences.getString("webview_url", getString(R.string.webview_url)) ?: ""
         useWebView = sharedPreferences.getBoolean("useWebView", true)
+        keepScreenOn = sharedPreferences.getBoolean("keepScreenOn", true)
         val authSecret = sharedPreferences.getString("authSecret", "") ?: ""
 
         webView.visibility = if (useWebView) View.VISIBLE else View.GONE
@@ -421,7 +424,11 @@ class MainActivity : AppCompatActivity() {
         btnNext.visibility = if (useWebView) View.GONE else View.VISIBLE
         txtPhotoInfo.visibility = View.GONE //enabled in onSettingsLoaded based on server settings
         txtDateTime.visibility = View.GONE //enabled in onSettingsLoaded based on server settings
-
+        if (keepScreenOn) {
+            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        } else {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
         if (useWebView) {
             savedUrl = if (authSecret.isNotEmpty()) {
                 Uri.parse(savedUrl)
@@ -605,7 +612,11 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        if (keepScreenOn) {
+            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        } else {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
         hideSystemUI()
     }
 
