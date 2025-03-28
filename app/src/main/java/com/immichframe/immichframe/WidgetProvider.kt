@@ -114,7 +114,8 @@ class WidgetProvider : AppWidgetProvider() {
 
             val compressedByteArray = outputStream.toByteArray()
 
-            val compressedBitmap = BitmapFactory.decodeByteArray(compressedByteArray, 0, compressedByteArray.size)
+            val compressedBitmap =
+                BitmapFactory.decodeByteArray(compressedByteArray, 0, compressedByteArray.size)
 
             if (!bitmap.isRecycled) {
                 bitmap.recycle()
