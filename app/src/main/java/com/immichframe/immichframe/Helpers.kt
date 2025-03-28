@@ -8,6 +8,8 @@ import android.graphics.Paint
 import android.util.Base64
 import retrofit2.Call
 import retrofit2.http.GET
+import android.graphics.Rect
+
 
 object Helpers {
     fun textSizeMultiplier(context: Context, currentSizeSp: Float, multiplier: Float): Float {
@@ -63,46 +65,55 @@ object Helpers {
         val lineWidth = 10
         val targetHeight = maxOf(leftImage.height, rightImage.height)
 
-        // Scale images efficiently
         val scaledLeftImage = scaleAspectFit(leftImage, targetHeight)
         val scaledRightImage = scaleAspectFit(rightImage, targetHeight)
 
         val width = scaledLeftImage.width + scaledRightImage.width + lineWidth
+        val maxTextureSize = 4096 // might need to reduce
 
-        // Try to allocate a smaller Bitmap if memory is tight
-        val result = try {
-            Bitmap.createBitmap(width, targetHeight, Bitmap.Config.RGB_565)
-        } catch (e: OutOfMemoryError) {
-            System.gc()
-            Bitmap.createBitmap(width / 2, targetHeight / 2, Bitmap.Config.RGB_565) // Fallback with smaller bitmap
+        val scaleFactor = if (width > maxTextureSize || targetHeight > maxTextureSize) {
+            minOf(maxTextureSize.toFloat() / width, maxTextureSize.toFloat() / targetHeight)
+        } else {
+            1f
         }
 
+        val resizedWidth = (width * scaleFactor).toInt()
+        val resizedHeight = (targetHeight * scaleFactor).toInt()
+
+        val result = Bitmap.createBitmap(resizedWidth, resizedHeight, Bitmap.Config.RGB_565)
         val canvas = Canvas(result)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
 
-        // Draw left image
-        canvas.drawBitmap(scaledLeftImage, 0f, 0f, null)
+        val scaleLeft = (scaleFactor * scaledLeftImage.width).toInt()
+        val scaleRight = (scaleFactor * scaledRightImage.width).toInt()
+        val scaledLineWidth = (lineWidth * scaleFactor).toInt()
 
-        // Draw separating line
-        val paint = Paint().apply {
-            color = lineColor
-            style = Paint.Style.FILL
-        }
+        val leftRect = Rect(0, 0, scaledLeftImage.width, scaledLeftImage.height)
+        val leftDest = Rect(0, 0, scaleLeft, resizedHeight)
+        canvas.drawBitmap(scaledLeftImage, leftRect, leftDest, paint)
+
+        paint.color = lineColor
         canvas.drawRect(
-            scaledLeftImage.width.toFloat(),
+            scaleLeft.toFloat(),
             0f,
-            (scaledLeftImage.width + lineWidth).toFloat(),
-            targetHeight.toFloat(),
+            (scaleLeft + scaledLineWidth).toFloat(),
+            resizedHeight.toFloat(),
             paint
         )
 
-        // Draw right image
-        canvas.drawBitmap(scaledRightImage, (scaledLeftImage.width + lineWidth).toFloat(), 0f, null)
+        val rightRect = Rect(0, 0, scaledRightImage.width, scaledRightImage.height)
+        val rightDest = Rect(
+            scaleLeft + scaledLineWidth,
+            0,
+            scaleLeft + scaledLineWidth + scaleRight,
+            resizedHeight
+        )
+        canvas.drawBitmap(scaledRightImage, rightRect, rightDest, paint)
 
-        // Recycle old bitmaps ASAP
-        leftImage.recycle()
-        rightImage.recycle()
-        scaledLeftImage.recycle()
-        scaledRightImage.recycle()
+        if (!leftImage.isRecycled) leftImage.recycle()
+        if (!rightImage.isRecycled) rightImage.recycle()
+        if (!scaledLeftImage.isRecycled) scaledLeftImage.recycle()
+        if (!scaledRightImage.isRecycled) scaledRightImage.recycle()
 
         return result
     }
@@ -111,15 +122,25 @@ object Helpers {
         val aspectRatio = image.width.toFloat() / image.height.toFloat()
         val targetWidth = (targetHeight * aspectRatio).toInt()
 
-        BitmapFactory.Options().apply {
-            inPreferredConfig = Bitmap.Config.RGB_565 // Reduce memory usage
-            inSampleSize = calculateInSampleSize(image.width, image.height, targetWidth, targetHeight)
+        if (image.width == targetWidth && image.height == targetHeight) {
+            return image
         }
 
-        return Bitmap.createScaledBitmap(image, targetWidth, targetHeight, true)
+        val scaledBitmap = Bitmap.createScaledBitmap(image, targetWidth, targetHeight, true)
+        if (image != scaledBitmap && !image.isRecycled) {
+            image.recycle()
+        }
+
+        return scaledBitmap
     }
 
-    private fun calculateInSampleSize(origWidth: Int, origHeight: Int, reqWidth: Int, reqHeight: Int): Int {
+
+    private fun calculateInSampleSize(
+        origWidth: Int,
+        origHeight: Int,
+        reqWidth: Int,
+        reqHeight: Int
+    ): Int {
         var inSampleSize = 1
         if (origHeight > reqHeight || origWidth > reqWidth) {
             val halfHeight = origHeight / 2
@@ -132,12 +153,12 @@ object Helpers {
     }
 
 
-
     fun decodeBitmapFromBytes(data: String): Bitmap {
         val decodedImage = Base64.decode(data, Base64.DEFAULT)
         val bmp = BitmapFactory.decodeByteArray(decodedImage, 0, decodedImage.size)
         return bmp
     }
+
     data class ImageResponse(
         val randomImageBase64: String,
         val thumbHashImageBase64: String,

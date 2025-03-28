@@ -28,6 +28,10 @@ import android.webkit.WebViewClient
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import retrofit2.Call
 import retrofit2.Callback
@@ -93,42 +97,58 @@ class ScreenSaverService : DreamService() {
     }
 
     private fun showImage(imageResponse: Helpers.ImageResponse) {
-        val randomBitmap = Helpers.decodeBitmapFromBytes(imageResponse.randomImageBase64)
-        val thumbHashBitmap = Helpers.decodeBitmapFromBytes(imageResponse.thumbHashImageBase64)
-        val finalImage: Bitmap?
-        var isMerged = false
-        val isPortrait = randomBitmap.height > randomBitmap.width
-        if (isPortrait && serverSettings.layout == "splitview") {
-            if (portraitCache != null) {
-                val decodedPortraitCacheImage =
-                    Base64.decode(portraitCache!!.randomImageBase64, Base64.DEFAULT)
-                val decodedPortraitImageBitmap = BitmapFactory.decodeByteArray(
-                    decodedPortraitCacheImage,
-                    0,
-                    decodedPortraitCacheImage.size
-                )
+        CoroutineScope(Dispatchers.IO).launch {
+            val randomBitmap = Helpers.decodeBitmapFromBytes(imageResponse.randomImageBase64)
+            val thumbHashBitmap = Helpers.decodeBitmapFromBytes(imageResponse.thumbHashImageBase64)
+            val finalImage: Bitmap?
+            var isMerged = false
 
-                val colorString =
-                    serverSettings.primaryColor?.takeIf { it.isNotBlank() } ?: "#FFFFFF"
-                val parsedColor = Color.parseColor(colorString)
-                finalImage =
-                    Helpers.mergeImages(decodedPortraitImageBitmap, randomBitmap, parsedColor)
-                isMerged = true
+            val isPortrait = randomBitmap.height > randomBitmap.width
+            if (isPortrait && serverSettings.layout == "splitview") {
+                if (portraitCache != null) {
+                    val decodedPortraitCacheImage =
+                        Base64.decode(portraitCache!!.randomImageBase64, Base64.DEFAULT)
+                    val decodedPortraitImageBitmap = BitmapFactory.decodeByteArray(
+                        decodedPortraitCacheImage, 0, decodedPortraitCacheImage.size
+                    )
+
+                    val colorString =
+                        serverSettings.primaryColor?.takeIf { it.isNotBlank() } ?: "#FFFFFF"
+                    val parsedColor = Color.parseColor(colorString)
+
+                    finalImage =
+                        Helpers.mergeImages(decodedPortraitImageBitmap, randomBitmap, parsedColor)
+                    isMerged = true
+
+                    decodedPortraitImageBitmap.recycle()
+                } else {
+                    portraitCache = imageResponse
+                    getNextImage()
+                    return@launch
+                }
             } else {
-                portraitCache = imageResponse
-                getNextImage()
-                return
+                finalImage = randomBitmap
             }
-        } else {
-            finalImage = randomBitmap
+
+            withContext(Dispatchers.Main) {
+                updateUI(finalImage, thumbHashBitmap, isMerged, imageResponse)
+            }
         }
+    }
+
+    private fun updateUI(
+        finalImage: Bitmap,
+        thumbHashBitmap: Bitmap,
+        isMerged: Boolean,
+        imageResponse: Helpers.ImageResponse
+    ) {
         val imageViewOld = if (isShowingFirst) imageView1 else imageView2
         val imageViewNew = if (isShowingFirst) imageView2 else imageView1
+
         zoomAnimator?.cancel()
         imageViewNew.alpha = 0f
         imageViewNew.scaleX = 1f
         imageViewNew.scaleY = 1f
-
         imageViewNew.setImageBitmap(finalImage)
         imageViewNew.visibility = View.VISIBLE
 

@@ -5,6 +5,8 @@ import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.util.Log
 import android.widget.RemoteViews
 import kotlinx.coroutines.CoroutineScope
@@ -16,6 +18,7 @@ import retrofit2.Callback
 import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.io.ByteArrayOutputStream
 
 class WidgetProvider : AppWidgetProvider() {
     override fun onUpdate(
@@ -50,6 +53,7 @@ class WidgetProvider : AppWidgetProvider() {
             )
 
             appWidgetManager.updateAppWidget(appWidgetId, views)
+
             CoroutineScope(Dispatchers.Main).launch {
                 try {
                     val prefs =
@@ -66,7 +70,10 @@ class WidgetProvider : AppWidgetProvider() {
                                 val randomBitmap =
                                     Helpers.decodeBitmapFromBytes(it.randomImageBase64)
 
-                                views.setImageViewBitmap(R.id.widgetImageView, randomBitmap)
+                                // Reduce the image quality before displaying
+                                val reducedBitmap = reduceBitmapQuality(randomBitmap)
+
+                                views.setImageViewBitmap(R.id.widgetImageView, reducedBitmap)
 
                                 appWidgetManager.updateAppWidget(appWidgetId, views)
                             }
@@ -100,6 +107,21 @@ class WidgetProvider : AppWidgetProvider() {
             })
         }
 
+        private fun reduceBitmapQuality(bitmap: Bitmap, quality: Int = 50): Bitmap {
+            val outputStream = ByteArrayOutputStream()
+
+            bitmap.compress(Bitmap.CompressFormat.JPEG, quality, outputStream)
+
+            val compressedByteArray = outputStream.toByteArray()
+
+            val compressedBitmap = BitmapFactory.decodeByteArray(compressedByteArray, 0, compressedByteArray.size)
+
+            if (!bitmap.isRecycled) {
+                bitmap.recycle()
+            }
+
+            return compressedBitmap
+        }
 
         private fun createRetrofit(baseUrl: String, authSecret: String): Retrofit {
             val client = OkHttpClient.Builder()

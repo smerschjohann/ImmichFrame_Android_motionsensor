@@ -47,6 +47,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
+import kotlinx.coroutines.*
 
 class MainActivity : AppCompatActivity() {
     private lateinit var webView: WebView
@@ -97,7 +98,7 @@ class MainActivity : AppCompatActivity() {
         hideSystemUI()
 
         webView = findViewById(R.id.webView)
-        webView.setBackgroundColor(Color.TRANSPARENT)
+        //webView.setBackgroundColor(Color.TRANSPARENT)
         imageView1 = findViewById(R.id.imageView1)
         imageView2 = findViewById(R.id.imageView2)
         txtPhotoInfo = findViewById(R.id.txtPhotoInfo)
@@ -150,42 +151,58 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showImage(imageResponse: Helpers.ImageResponse) {
-        val randomBitmap = Helpers.decodeBitmapFromBytes(imageResponse.randomImageBase64)
-        val thumbHashBitmap = Helpers.decodeBitmapFromBytes(imageResponse.thumbHashImageBase64)
-        val finalImage: Bitmap?
-        var isMerged = false
-        val isPortrait = randomBitmap.height > randomBitmap.width
-        if (isPortrait && serverSettings.layout == "splitview") {
-            if (portraitCache != null) {
-                val decodedPortraitCacheImage =
-                    Base64.decode(portraitCache!!.randomImageBase64, Base64.DEFAULT)
-                val decodedPortraitImageBitmap = BitmapFactory.decodeByteArray(
-                    decodedPortraitCacheImage,
-                    0,
-                    decodedPortraitCacheImage.size
-                )
+        CoroutineScope(Dispatchers.IO).launch {
+            val randomBitmap = Helpers.decodeBitmapFromBytes(imageResponse.randomImageBase64)
+            val thumbHashBitmap = Helpers.decodeBitmapFromBytes(imageResponse.thumbHashImageBase64)
+            val finalImage: Bitmap?
+            var isMerged = false
 
-                val colorString =
-                    serverSettings.primaryColor?.takeIf { it.isNotBlank() } ?: "#FFFFFF"
-                val parsedColor = Color.parseColor(colorString)
-                finalImage =
-                    Helpers.mergeImages(decodedPortraitImageBitmap, randomBitmap, parsedColor)
-                isMerged = true
+            val isPortrait = randomBitmap.height > randomBitmap.width
+            if (isPortrait && serverSettings.layout == "splitview") {
+                if (portraitCache != null) {
+                    val decodedPortraitCacheImage =
+                        Base64.decode(portraitCache!!.randomImageBase64, Base64.DEFAULT)
+                    val decodedPortraitImageBitmap = BitmapFactory.decodeByteArray(
+                        decodedPortraitCacheImage, 0, decodedPortraitCacheImage.size
+                    )
+
+                    val colorString =
+                        serverSettings.primaryColor?.takeIf { it.isNotBlank() } ?: "#FFFFFF"
+                    val parsedColor = Color.parseColor(colorString)
+
+                    finalImage =
+                        Helpers.mergeImages(decodedPortraitImageBitmap, randomBitmap, parsedColor)
+                    isMerged = true
+
+                    decodedPortraitImageBitmap.recycle()
+                } else {
+                    portraitCache = imageResponse
+                    getNextImage()
+                    return@launch
+                }
             } else {
-                portraitCache = imageResponse
-                getNextImage()
-                return
+                finalImage = randomBitmap
             }
-        } else {
-            finalImage = randomBitmap
+
+            withContext(Dispatchers.Main) {
+                updateUI(finalImage, thumbHashBitmap, isMerged, imageResponse)
+            }
         }
+    }
+
+    private fun updateUI(
+        finalImage: Bitmap,
+        thumbHashBitmap: Bitmap,
+        isMerged: Boolean,
+        imageResponse: Helpers.ImageResponse
+    ) {
         val imageViewOld = if (isShowingFirst) imageView1 else imageView2
         val imageViewNew = if (isShowingFirst) imageView2 else imageView1
+
         zoomAnimator?.cancel()
         imageViewNew.alpha = 0f
         imageViewNew.scaleX = 1f
         imageViewNew.scaleY = 1f
-
         imageViewNew.setImageBitmap(finalImage)
         imageViewNew.visibility = View.VISIBLE
 
@@ -415,6 +432,8 @@ class MainActivity : AppCompatActivity() {
         useWebView = sharedPreferences.getBoolean("useWebView", true)
         keepScreenOn = sharedPreferences.getBoolean("keepScreenOn", true)
         val authSecret = sharedPreferences.getString("authSecret", "") ?: ""
+
+        webView.setBackgroundColor(if (savedUrl == getString(R.string.webview_url)) Color.WHITE else Color.TRANSPARENT)
 
         webView.visibility = if (useWebView) View.VISIBLE else View.GONE
         imageView1.visibility = if (useWebView) View.GONE else View.VISIBLE
