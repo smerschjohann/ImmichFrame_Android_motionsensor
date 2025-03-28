@@ -5,10 +5,10 @@ import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.content.Context
 import android.content.Intent
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
+import android.graphics.*
 import android.util.Log
 import android.widget.RemoteViews
+import androidx.core.graphics.createBitmap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -73,7 +73,8 @@ class WidgetProvider : AppWidgetProvider() {
                                 // Reduce the image quality before displaying
                                 val reducedBitmap = reduceBitmapQuality(randomBitmap)
 
-                                views.setImageViewBitmap(R.id.widgetImageView, reducedBitmap)
+                                val roundedBitmap = getCircularBitmap(reducedBitmap)
+                                views.setImageViewBitmap(R.id.widgetImageView, roundedBitmap)
 
                                 appWidgetManager.updateAppWidget(appWidgetId, views)
                             }
@@ -148,5 +149,22 @@ class WidgetProvider : AppWidgetProvider() {
                 .build()
         }
 
+        private fun getCircularBitmap(bitmap: Bitmap): Bitmap {
+            val size = bitmap.width.coerceAtMost(bitmap.height)
+            val output = createBitmap(size, size)
+
+            val canvas = Canvas(output)
+            val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+
+            val rect = Rect(0, 0, size, size)
+            val rectF = RectF(rect)
+            val radius = size / 2f
+
+            canvas.drawCircle(radius, radius, radius, paint)
+            paint.xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_IN)
+            canvas.drawBitmap(bitmap, rect, rect, paint)
+
+            return output
+        }
     }
 }
