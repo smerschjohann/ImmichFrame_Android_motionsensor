@@ -73,8 +73,7 @@ class WidgetProvider : AppWidgetProvider() {
                                 // Reduce the image quality before displaying
                                 val reducedBitmap = reduceBitmapQuality(randomBitmap)
 
-                                val roundedBitmap = getCircularBitmap(reducedBitmap)
-                                views.setImageViewBitmap(R.id.widgetImageView, roundedBitmap)
+                                views.setImageViewBitmap(R.id.widgetImageView, reducedBitmap)
 
                                 appWidgetManager.updateAppWidget(appWidgetId, views)
                             }
@@ -147,24 +146,6 @@ class WidgetProvider : AppWidgetProvider() {
                 .client(client)
                 .addConverterFactory(GsonConverterFactory.create())
                 .build()
-        }
-
-        private fun getCircularBitmap(bitmap: Bitmap): Bitmap {
-            val size = bitmap.width.coerceAtMost(bitmap.height)
-            val output = createBitmap(size, size)
-
-            val canvas = Canvas(output)
-            val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-
-            val rect = Rect(0, 0, size, size)
-            val rectF = RectF(rect)
-            val radius = size / 2f
-
-            canvas.drawCircle(radius, radius, radius, paint)
-            paint.xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_IN)
-            canvas.drawBitmap(bitmap, rect, rect, paint)
-
-            return output
         }
     }
 }
