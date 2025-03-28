@@ -8,7 +8,6 @@ import android.content.Intent
 import android.graphics.*
 import android.util.Log
 import android.widget.RemoteViews
-import androidx.core.graphics.createBitmap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -32,9 +31,26 @@ class WidgetProvider : AppWidgetProvider() {
         }
     }
 
+    fun updateBackground(context: Context, appWidgetId: Int) {
+        val appWidgetManager = AppWidgetManager.getInstance(context)
+        updateWidget(context, appWidgetManager, appWidgetId)
+    }
+
     companion object {
         fun updateWidget(context: Context, appWidgetManager: AppWidgetManager, appWidgetId: Int) {
+            val prefs = context.getSharedPreferences("ImmichFramePrefs", Context.MODE_PRIVATE)
+            val backgroundType =
+                prefs.getString("widgetBackground$appWidgetId", "square") ?: "square"
+
             val views = RemoteViews(context.packageName, R.layout.widget_view)
+            val backgroundRes = when (backgroundType) {
+                "square" -> R.drawable.widget_background_square
+                "round" -> R.drawable.widget_background_circle
+                "squircle" -> R.drawable.widget_background_squircle
+                else -> R.drawable.widget_background_square
+            }
+            views.setInt(R.id.widget_frame, "setBackgroundResource", backgroundRes)
+
             val intent = Intent(context, WidgetProvider::class.java).apply {
                 action = AppWidgetManager.ACTION_APPWIDGET_UPDATE
                 putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, intArrayOf(appWidgetId))
@@ -56,8 +72,6 @@ class WidgetProvider : AppWidgetProvider() {
 
             CoroutineScope(Dispatchers.Main).launch {
                 try {
-                    val prefs =
-                        context.getSharedPreferences("ImmichFramePrefs", Context.MODE_PRIVATE)
                     val savedUrl = prefs.getString("webview_url", "") ?: ""
                     val authSecret = prefs.getString("authSecret", "") ?: ""
 
@@ -70,7 +84,6 @@ class WidgetProvider : AppWidgetProvider() {
                                 val randomBitmap =
                                     Helpers.decodeBitmapFromBytes(it.randomImageBase64)
 
-                                // Reduce the image quality before displaying
                                 val reducedBitmap = reduceBitmapQuality(randomBitmap)
 
                                 views.setImageViewBitmap(R.id.widgetImageView, reducedBitmap)

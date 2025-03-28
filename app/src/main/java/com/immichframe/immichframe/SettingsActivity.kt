@@ -22,7 +22,7 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var editTextAuthSecret: EditText
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_settings)
+        setContentView(R.layout.settings_view)
 
         editTextUrl = findViewById(R.id.editTextUrl)
         buttonSaveUrl = findViewById(R.id.buttonSaveUrl)

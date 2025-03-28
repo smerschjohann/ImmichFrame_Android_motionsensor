@@ -8,7 +8,7 @@
     android:resizeMode="horizontal|vertical"
     android:updatePeriodMillis="1800000"
     android:widgetCategory="home_screen"
-    android:configure="com.immichframe.immichframe.WidgetConfigurationActivity"
+    android:configure="com.immichframe.immichframe.WidgetConfigActivity"
     android:widgetFeatures="configuration_optional|reconfigurable">
     <distribute:target android:minSdkVersion="31" />
 </appwidget-provider>
