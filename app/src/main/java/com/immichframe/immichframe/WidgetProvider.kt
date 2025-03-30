@@ -18,6 +18,8 @@ import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.io.ByteArrayOutputStream
+import androidx.core.graphics.scale
+import kotlinx.coroutines.withContext
 
 class WidgetProvider : AppWidgetProvider() {
     override fun onUpdate(
@@ -70,7 +72,6 @@ class WidgetProvider : AppWidgetProvider() {
 
             appWidgetManager.updateAppWidget(appWidgetId, views)
 
-            CoroutineScope(Dispatchers.Main).launch {
                 try {
                     val savedUrl = prefs.getString("webview_url", "") ?: ""
                     val authSecret = prefs.getString("authSecret", "") ?: ""
@@ -81,21 +82,24 @@ class WidgetProvider : AppWidgetProvider() {
 
                         getNextImage(apiService) { imageResponse ->
                             imageResponse?.let {
-                                val randomBitmap =
-                                    Helpers.decodeBitmapFromBytes(it.randomImageBase64)
+                                CoroutineScope(Dispatchers.IO).launch {
+                                val randomBitmap = Helpers.decodeBitmapFromBytes(it.randomImageBase64)
 
-                                val reducedBitmap = reduceBitmapQuality(randomBitmap)
+                                    val optimizedBitmap = randomBitmap.copy(Bitmap.Config.RGB_565, false)
+                                    val reducedBitmap = reduceBitmapQuality(optimizedBitmap)
 
-                                views.setImageViewBitmap(R.id.widgetImageView, reducedBitmap)
+                                    withContext(Dispatchers.Main) {
+                                        views.setImageViewBitmap(R.id.widgetImageView, reducedBitmap)
+                                        appWidgetManager.updateAppWidget(appWidgetId, views)
+                                    }
+                                }
 
-                                appWidgetManager.updateAppWidget(appWidgetId, views)
                             }
                         }
                     }
                 } catch (e: Exception) {
                     Log.e("WidgetDebug", "Error updating widget: ${e.message}")
                 }
-            }
         }
 
         private fun getNextImage(
@@ -120,22 +124,20 @@ class WidgetProvider : AppWidgetProvider() {
             })
         }
 
-        private fun reduceBitmapQuality(bitmap: Bitmap, quality: Int = 50): Bitmap {
-            val outputStream = ByteArrayOutputStream()
+        private fun reduceBitmapQuality(bitmap: Bitmap, maxSize: Int = 1000) : Bitmap {
+            val width = bitmap.width
+            val height = bitmap.height
 
-            bitmap.compress(Bitmap.CompressFormat.JPEG, quality, outputStream)
+            // Calculate new dimensions while maintaining aspect ratio
+            val scaleFactor = maxSize.toFloat() / width.coerceAtLeast(height)
+            val newWidth = (width * scaleFactor).toInt()
+            val newHeight = (height * scaleFactor).toInt()
 
-            val compressedByteArray = outputStream.toByteArray()
+            val resizedBitmap = bitmap.scale(newWidth, newHeight)
 
-            val compressedBitmap =
-                BitmapFactory.decodeByteArray(compressedByteArray, 0, compressedByteArray.size)
-
-            if (!bitmap.isRecycled) {
-                bitmap.recycle()
-            }
-
-            return compressedBitmap
+            return resizedBitmap
         }
+
 
         private fun createRetrofit(baseUrl: String, authSecret: String): Retrofit {
             val client = OkHttpClient.Builder()
