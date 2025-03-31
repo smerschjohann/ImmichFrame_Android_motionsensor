@@ -17,8 +17,6 @@ import retrofit2.Callback
 import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
-import java.io.ByteArrayOutputStream
-import androidx.core.graphics.scale
 import kotlinx.coroutines.withContext
 
 class WidgetProvider : AppWidgetProvider() {
@@ -53,6 +51,12 @@ class WidgetProvider : AppWidgetProvider() {
             }
             views.setInt(R.id.widget_frame, "setBackgroundResource", backgroundRes)
 
+            //get the current size of the widget, set maxSize to twice that
+            val options = appWidgetManager.getAppWidgetOptions(appWidgetId)
+            val width = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH)
+            val height = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT)
+            val maxSize = maxOf(width, height) * 2
+
             val intent = Intent(context, WidgetProvider::class.java).apply {
                 action = AppWidgetManager.ACTION_APPWIDGET_UPDATE
                 putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, intArrayOf(appWidgetId))
@@ -72,34 +76,39 @@ class WidgetProvider : AppWidgetProvider() {
 
             appWidgetManager.updateAppWidget(appWidgetId, views)
 
-                try {
-                    val savedUrl = prefs.getString("webview_url", "") ?: ""
-                    val authSecret = prefs.getString("authSecret", "") ?: ""
+            try {
+                val savedUrl = prefs.getString("webview_url", "") ?: ""
+                val authSecret = prefs.getString("authSecret", "") ?: ""
 
-                    if (savedUrl.isNotEmpty()) {
-                        val retrofit = createRetrofit(savedUrl, authSecret)
-                        val apiService = retrofit.create(Helpers.ApiService::class.java)
+                if (savedUrl.isNotEmpty()) {
+                    val retrofit = createRetrofit(savedUrl, authSecret)
+                    val apiService = retrofit.create(Helpers.ApiService::class.java)
 
+                    CoroutineScope(Dispatchers.IO).launch {
                         getNextImage(apiService) { imageResponse ->
                             imageResponse?.let {
                                 CoroutineScope(Dispatchers.IO).launch {
-                                val randomBitmap = Helpers.decodeBitmapFromBytes(it.randomImageBase64)
+                                    var randomBitmap =
+                                        Helpers.decodeBitmapFromBytes(it.randomImageBase64)
+                                    randomBitmap = randomBitmap.copy(Bitmap.Config.RGB_565, false)
 
-                                    val optimizedBitmap = randomBitmap.copy(Bitmap.Config.RGB_565, false)
-                                    val reducedBitmap = reduceBitmapQuality(optimizedBitmap)
+                                    val reducedBitmap = Helpers.reduceBitmapQuality(randomBitmap, maxSize)
 
                                     withContext(Dispatchers.Main) {
-                                        views.setImageViewBitmap(R.id.widgetImageView, reducedBitmap)
+                                        views.setImageViewBitmap(
+                                            R.id.widgetImageView,
+                                            reducedBitmap
+                                        )
                                         appWidgetManager.updateAppWidget(appWidgetId, views)
                                     }
                                 }
-
                             }
                         }
                     }
-                } catch (e: Exception) {
-                    Log.e("WidgetDebug", "Error updating widget: ${e.message}")
                 }
+            } catch (e: Exception) {
+                Log.e("WidgetDebug", "Error updating widget: ${e.message}")
+            }
         }
 
         private fun getNextImage(
@@ -123,21 +132,6 @@ class WidgetProvider : AppWidgetProvider() {
                 }
             })
         }
-
-        private fun reduceBitmapQuality(bitmap: Bitmap, maxSize: Int = 1000) : Bitmap {
-            val width = bitmap.width
-            val height = bitmap.height
-
-            // Calculate new dimensions while maintaining aspect ratio
-            val scaleFactor = maxSize.toFloat() / width.coerceAtLeast(height)
-            val newWidth = (width * scaleFactor).toInt()
-            val newHeight = (height * scaleFactor).toInt()
-
-            val resizedBitmap = bitmap.scale(newWidth, newHeight)
-
-            return resizedBitmap
-        }
-
 
         private fun createRetrofit(baseUrl: String, authSecret: String): Retrofit {
             val client = OkHttpClient.Builder()

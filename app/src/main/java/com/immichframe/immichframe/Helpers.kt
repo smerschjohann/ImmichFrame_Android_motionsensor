@@ -9,6 +9,7 @@ import android.util.Base64
 import retrofit2.Call
 import retrofit2.http.GET
 import android.graphics.Rect
+import androidx.core.graphics.scale
 
 
 object Helpers {
@@ -157,6 +158,20 @@ object Helpers {
         val decodedImage = Base64.decode(data, Base64.DEFAULT)
         val bmp = BitmapFactory.decodeByteArray(decodedImage, 0, decodedImage.size)
         return bmp
+    }
+
+    fun reduceBitmapQuality(bitmap: Bitmap, maxSize: Int = 1000): Bitmap {
+        val width = bitmap.width
+        val height = bitmap.height
+
+        // Calculate new dimensions while maintaining aspect ratio
+        val scaleFactor = maxSize.toFloat() / width.coerceAtLeast(height)
+        val newWidth = (width * scaleFactor).toInt()
+        val newHeight = (height * scaleFactor).toInt()
+
+        val resizedBitmap = bitmap.scale(newWidth, newHeight)
+
+        return resizedBitmap
     }
 
     data class ImageResponse(

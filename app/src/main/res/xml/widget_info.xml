@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:distribute="http://schemas.android.com/apk/distribution"
     android:initialLayout="@layout/widget_view"
     android:minWidth="40dp"
     android:minHeight="40dp"
@@ -10,5 +9,4 @@
     android:widgetCategory="home_screen"
     android:configure="com.immichframe.immichframe.WidgetConfigActivity"
     android:widgetFeatures="configuration_optional|reconfigurable">
-    <distribute:target android:minSdkVersion="31" />
 </appwidget-provider>
