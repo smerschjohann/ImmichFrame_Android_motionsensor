@@ -64,100 +64,39 @@ object Helpers {
 
     fun mergeImages(leftImage: Bitmap, rightImage: Bitmap, lineColor: Int): Bitmap {
         val lineWidth = 10
-        val targetHeight = maxOf(leftImage.height, rightImage.height)
+        val targetHeight = maxOf(leftImage.height, rightImage.height) // Use max height
 
-        val scaledLeftImage = scaleAspectFit(leftImage, targetHeight)
-        val scaledRightImage = scaleAspectFit(rightImage, targetHeight)
+        val totalWidth = leftImage.width + rightImage.width + lineWidth
 
-        val width = scaledLeftImage.width + scaledRightImage.width + lineWidth
-        val maxTextureSize = 4096 // might need to reduce
-
-        val scaleFactor = if (width > maxTextureSize || targetHeight > maxTextureSize) {
-            minOf(maxTextureSize.toFloat() / width, maxTextureSize.toFloat() / targetHeight)
-        } else {
-            1f
-        }
-
-        val resizedWidth = (width * scaleFactor).toInt()
-        val resizedHeight = (targetHeight * scaleFactor).toInt()
-
-        val result = Bitmap.createBitmap(resizedWidth, resizedHeight, Bitmap.Config.RGB_565)
+        val result = Bitmap.createBitmap(totalWidth, targetHeight, Bitmap.Config.RGB_565)
         val canvas = Canvas(result)
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
 
-        val scaleLeft = (scaleFactor * scaledLeftImage.width).toInt()
-        val scaleRight = (scaleFactor * scaledRightImage.width).toInt()
-        val scaledLineWidth = (lineWidth * scaleFactor).toInt()
+        canvas.drawBitmap(leftImage, 0f, 0f, paint)
 
-        val leftRect = Rect(0, 0, scaledLeftImage.width, scaledLeftImage.height)
-        val leftDest = Rect(0, 0, scaleLeft, resizedHeight)
-        canvas.drawBitmap(scaledLeftImage, leftRect, leftDest, paint)
-
+        // Draw dividing line
         paint.color = lineColor
         canvas.drawRect(
-            scaleLeft.toFloat(),
+            leftImage.width.toFloat(), // Line starts after left image
             0f,
-            (scaleLeft + scaledLineWidth).toFloat(),
-            resizedHeight.toFloat(),
+            (leftImage.width + lineWidth).toFloat(),
+            targetHeight.toFloat(),
             paint
         )
 
-        val rightRect = Rect(0, 0, scaledRightImage.width, scaledRightImage.height)
-        val rightDest = Rect(
-            scaleLeft + scaledLineWidth,
-            0,
-            scaleLeft + scaledLineWidth + scaleRight,
-            resizedHeight
-        )
-        canvas.drawBitmap(scaledRightImage, rightRect, rightDest, paint)
-
-        if (!leftImage.isRecycled) leftImage.recycle()
-        if (!rightImage.isRecycled) rightImage.recycle()
-        if (!scaledLeftImage.isRecycled) scaledLeftImage.recycle()
-        if (!scaledRightImage.isRecycled) scaledRightImage.recycle()
+        canvas.drawBitmap(rightImage, (leftImage.width + lineWidth).toFloat(), 0f, paint)
 
         return result
     }
 
-    private fun scaleAspectFit(image: Bitmap, targetHeight: Int): Bitmap {
-        val aspectRatio = image.width.toFloat() / image.height.toFloat()
-        val targetWidth = (targetHeight * aspectRatio).toInt()
-
-        if (image.width == targetWidth && image.height == targetHeight) {
-            return image
-        }
-
-        val scaledBitmap = Bitmap.createScaledBitmap(image, targetWidth, targetHeight, true)
-        if (image != scaledBitmap && !image.isRecycled) {
-            image.recycle()
-        }
-
-        return scaledBitmap
-    }
-
-
-    private fun calculateInSampleSize(
-        origWidth: Int,
-        origHeight: Int,
-        reqWidth: Int,
-        reqHeight: Int
-    ): Int {
-        var inSampleSize = 1
-        if (origHeight > reqHeight || origWidth > reqWidth) {
-            val halfHeight = origHeight / 2
-            val halfWidth = origWidth / 2
-            while ((halfHeight / inSampleSize) >= reqHeight && (halfWidth / inSampleSize) >= reqWidth) {
-                inSampleSize *= 2
-            }
-        }
-        return inSampleSize
-    }
-
-
     fun decodeBitmapFromBytes(data: String): Bitmap {
         val decodedImage = Base64.decode(data, Base64.DEFAULT)
-        val bmp = BitmapFactory.decodeByteArray(decodedImage, 0, decodedImage.size)
-        return bmp
+
+        val options = BitmapFactory.Options().apply {
+            inPreferredConfig = Bitmap.Config.RGB_565
+        }
+
+        return BitmapFactory.decodeByteArray(decodedImage, 0, decodedImage.size, options)
     }
 
     fun reduceBitmapQuality(bitmap: Bitmap, maxSize: Int = 1000): Bitmap {

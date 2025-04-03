@@ -6,7 +6,6 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
@@ -17,7 +16,6 @@ import android.service.dreams.DreamService
 import android.text.SpannableString
 import android.text.Spanned
 import android.text.style.RelativeSizeSpan
-import android.util.Base64
 import android.util.Log
 import android.view.View
 import android.webkit.WebResourceError
@@ -98,25 +96,30 @@ class ScreenSaverService : DreamService() {
 
     private fun showImage(imageResponse: Helpers.ImageResponse) {
         CoroutineScope(Dispatchers.IO).launch {
-            val randomBitmap = Helpers.decodeBitmapFromBytes(imageResponse.randomImageBase64)
+            //get the window size
+            val decorView = window.decorView
+            val width = decorView.width
+            val height = decorView.height
+            val maxSize = maxOf(width, height)
+
+            var randomBitmap = Helpers.decodeBitmapFromBytes(imageResponse.randomImageBase64)
             val thumbHashBitmap = Helpers.decodeBitmapFromBytes(imageResponse.thumbHashImageBase64)
-            val finalImage: Bitmap?
             var isMerged = false
 
             val isPortrait = randomBitmap.height > randomBitmap.width
             if (isPortrait && serverSettings.layout == "splitview") {
                 if (portraitCache != null) {
-                    val decodedPortraitCacheImage =
-                        Base64.decode(portraitCache!!.randomImageBase64, Base64.DEFAULT)
-                    val decodedPortraitImageBitmap = BitmapFactory.decodeByteArray(
-                        decodedPortraitCacheImage, 0, decodedPortraitCacheImage.size
-                    )
+                    var decodedPortraitImageBitmap =
+                        Helpers.decodeBitmapFromBytes(portraitCache!!.randomImageBase64)
+                    decodedPortraitImageBitmap =
+                        Helpers.reduceBitmapQuality(decodedPortraitImageBitmap, maxSize)
+                    randomBitmap = Helpers.reduceBitmapQuality(randomBitmap, maxSize)
 
                     val colorString =
                         serverSettings.primaryColor?.takeIf { it.isNotBlank() } ?: "#FFFFFF"
                     val parsedColor = Color.parseColor(colorString)
 
-                    finalImage =
+                    randomBitmap =
                         Helpers.mergeImages(decodedPortraitImageBitmap, randomBitmap, parsedColor)
                     isMerged = true
 
@@ -127,11 +130,11 @@ class ScreenSaverService : DreamService() {
                     return@launch
                 }
             } else {
-                finalImage = randomBitmap
+                randomBitmap = Helpers.reduceBitmapQuality(randomBitmap, maxSize * 2)
             }
 
             withContext(Dispatchers.Main) {
-                updateUI(finalImage, thumbHashBitmap, isMerged, imageResponse)
+                updateUI(randomBitmap, thumbHashBitmap, isMerged, imageResponse)
             }
         }
     }

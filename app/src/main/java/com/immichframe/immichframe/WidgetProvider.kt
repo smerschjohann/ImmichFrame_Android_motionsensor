@@ -90,14 +90,13 @@ class WidgetProvider : AppWidgetProvider() {
                                 CoroutineScope(Dispatchers.IO).launch {
                                     var randomBitmap =
                                         Helpers.decodeBitmapFromBytes(it.randomImageBase64)
-                                    randomBitmap = randomBitmap.copy(Bitmap.Config.RGB_565, false)
 
-                                    val reducedBitmap = Helpers.reduceBitmapQuality(randomBitmap, maxSize)
+                                    randomBitmap = Helpers.reduceBitmapQuality(randomBitmap, maxSize)
 
                                     withContext(Dispatchers.Main) {
                                         views.setImageViewBitmap(
                                             R.id.widgetImageView,
-                                            reducedBitmap
+                                            randomBitmap
                                         )
                                         appWidgetManager.updateAppWidget(appWidgetId, views)
                                     }
