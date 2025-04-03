@@ -50,11 +50,11 @@ class WidgetProvider : AppWidgetProvider() {
             }
             views.setInt(R.id.widget_frame, "setBackgroundResource", backgroundRes)
 
-            //get the current size of the widget, set maxSize to twice that
+            /*//get the current size of the widget, set maxSize to twice that
             val options = appWidgetManager.getAppWidgetOptions(appWidgetId)
             val width = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH)
             val height = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT)
-            val maxSize = maxOf(width, height) * 2
+            val maxSize = maxOf(width, height) * 2*/
 
             val intent = Intent(context, WidgetProvider::class.java).apply {
                 action = AppWidgetManager.ACTION_APPWIDGET_UPDATE
@@ -90,7 +90,8 @@ class WidgetProvider : AppWidgetProvider() {
                                     var randomBitmap =
                                         Helpers.decodeBitmapFromBytes(it.randomImageBase64)
 
-                                    randomBitmap = Helpers.reduceBitmapQuality(randomBitmap, maxSize)
+                                    //randomBitmap = Helpers.reduceBitmapQuality(randomBitmap, maxSize)
+                                    randomBitmap = Helpers.reduceBitmapQuality(randomBitmap, 1000)
 
                                     withContext(Dispatchers.Main) {
                                         views.setImageViewBitmap(

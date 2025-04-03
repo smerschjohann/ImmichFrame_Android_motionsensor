@@ -49,7 +49,7 @@
         android:id="@+id/save_button"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:backgroundTint="?attr/colorPrimary"
+        android:backgroundTint="#00ACC1"
         android:text="Save"
         android:textColor="@android:color/white"
         tools:ignore="HardcodedText" />
