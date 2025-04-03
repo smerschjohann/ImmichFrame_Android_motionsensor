@@ -8,7 +8,6 @@ import android.graphics.Paint
 import android.util.Base64
 import retrofit2.Call
 import retrofit2.http.GET
-import android.graphics.Rect
 import androidx.core.graphics.scale
 
 
