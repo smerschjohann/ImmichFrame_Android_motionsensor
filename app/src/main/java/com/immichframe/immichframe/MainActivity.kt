@@ -278,16 +278,32 @@ class MainActivity : AppCompatActivity() {
     private fun updateDateTimeWeather() {
         if (serverSettings.showClock) {
             val currentDateTime = Calendar.getInstance().time
-            val dateFormatter =
-                SimpleDateFormat(serverSettings.photoDateFormat, Locale.getDefault())
-            val timeFormatter = SimpleDateFormat(serverSettings.clockFormat, Locale.getDefault())
 
-            val formattedDate = dateFormatter.format(currentDateTime)
-            val formattedTime = timeFormatter.format(currentDateTime)
-            val dt = if (showCurrentDate) "$formattedDate\n$formattedTime" else formattedTime
+            val formattedDate = try {
+                SimpleDateFormat(serverSettings.photoDateFormat, Locale.getDefault()).format(
+                    currentDateTime
+                )
+            } catch (e: Exception) {
+                ""
+            }
+
+            val formattedTime = try {
+                SimpleDateFormat(serverSettings.clockFormat, Locale.getDefault()).format(
+                    currentDateTime
+                )
+            } catch (e: Exception) {
+                ""
+            }
+
+            val dt = if (showCurrentDate && formattedDate.isNotEmpty()) {
+                "$formattedDate\n$formattedTime"
+            } else {
+                formattedTime
+            }
 
             txtDateTime.text = SpannableString(dt).apply {
-                val start = if (showCurrentDate) formattedDate.length + 1 else 0
+                val start =
+                    if (showCurrentDate && formattedDate.isNotEmpty()) formattedDate.length + 1 else 0
                 setSpan(RelativeSizeSpan(2f), start, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
             }
         }
