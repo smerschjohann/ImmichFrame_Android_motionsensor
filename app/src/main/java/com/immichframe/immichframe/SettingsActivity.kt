@@ -90,9 +90,11 @@ class SettingsActivity : AppCompatActivity() {
         val keepScreenOn = chkKeepScreenOn.isChecked
         val blurredBackground = chkBlurredBackground.isChecked
         val showCurrentDate = chkShowCurrentDate.isChecked
+        // Ensure trailing slash
+        val fixedUrl = if (!url.endsWith("/")) "$url/" else url
         val sharedPreferences = getSharedPreferences("ImmichFramePrefs", MODE_PRIVATE)
         with(sharedPreferences.edit()) {
-            putString("webview_url", url)
+            putString("webview_url", fixedUrl)
             putBoolean("useWebView", useWebView)
             putBoolean("keepScreenOn", keepScreenOn)
             putBoolean("blurredBackground", blurredBackground)
