@@ -78,6 +78,31 @@
         android:visibility="gone"
         tools:ignore="HardcodedText" />
 
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="20dp"
+        android:orientation="vertical">
+
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/chkDimScreen"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Set Screen Dim Hours?"
+            tools:ignore="HardcodedText" />
+
+        <EditText
+            android:id="@+id/editTextDimTimeRange"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="20dp"
+            android:autofillHints="timeframe"
+            android:hint="e.g., 22:00-07:00"
+            android:inputType="text"
+            tools:ignore="HardcodedText" />
+
+    </LinearLayout>
+
     <Button
         android:id="@+id/buttonAndroidSettings"
         android:layout_width="wrap_content"

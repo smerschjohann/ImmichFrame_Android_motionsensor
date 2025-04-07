@@ -56,6 +56,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnPrevious: Button
     private lateinit var btnPause: Button
     private lateinit var btnNext: Button
+    private lateinit var dimOverlay: View
     private lateinit var serverSettings: Helpers.ServerSettings
     private var retrofit: Retrofit? = null
     private lateinit var apiService: Helpers.ApiService
@@ -76,6 +77,20 @@ class MainActivity : AppCompatActivity() {
                 handler.postDelayed(this, (serverSettings.interval * 1000).toLong())
                 getNextImage()
             }
+        }
+    }
+    private val weatherRunnable = object : Runnable {
+        override fun run() {
+            if (isWeatherTimerRunning) {
+                handler.postDelayed(this, 600000)
+                getWeather()
+            }
+        }
+    }
+    private val dimCheckRunnable = object : Runnable {
+        override fun run() {
+            checkDimTime()
+            handler.postDelayed(this, 30000)
         }
     }
     private var isShowingFirst = true
@@ -104,6 +119,7 @@ class MainActivity : AppCompatActivity() {
         btnPrevious = findViewById(R.id.btnPrevious)
         btnPause = findViewById(R.id.btnPause)
         btnNext = findViewById(R.id.btnNext)
+        dimOverlay = findViewById(R.id.dimOverlay)
 
         val swipeRefreshLayout = findViewById<SwipeRefreshLayout>(R.id.swipeRefreshLayout)
         swipeRefreshLayout.setOnRefreshListener {
@@ -146,6 +162,7 @@ class MainActivity : AppCompatActivity() {
             startImageTimer()
         }
         loadSettings()
+
     }
 
     private fun showImage(imageResponse: Helpers.ImageResponse) {
@@ -358,6 +375,18 @@ class MainActivity : AppCompatActivity() {
         handler.removeCallbacks(imageRunnable)
     }
 
+    private fun startWeatherTimer() {
+        if (!isWeatherTimerRunning) {
+            isWeatherTimerRunning = true
+            handler.post(weatherRunnable)
+        }
+    }
+
+    private fun stopWeatherTimer() {
+        isWeatherTimerRunning = false
+        handler.removeCallbacks(weatherRunnable)
+    }
+
     private fun startZoomAnimation(imageView: ImageView) {
         zoomAnimator?.cancel()
         zoomAnimator = ObjectAnimator.ofPropertyValuesHolder(
@@ -451,7 +480,7 @@ class MainActivity : AppCompatActivity() {
         useWebView = sharedPreferences.getBoolean("useWebView", true)
         keepScreenOn = sharedPreferences.getBoolean("keepScreenOn", true)
         val authSecret = sharedPreferences.getString("authSecret", "") ?: ""
-
+        val screenDim = sharedPreferences.getBoolean("screenDim", false)
         webView.setBackgroundColor(if (savedUrl == getString(R.string.webview_url)) Color.WHITE else Color.TRANSPARENT)
 
         webView.visibility = if (useWebView) View.VISIBLE else View.GONE
@@ -467,6 +496,16 @@ class MainActivity : AppCompatActivity() {
         } else {
             window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
+        if (screenDim) {
+            handler.post(dimCheckRunnable)
+        } else {
+            handler.removeCallbacks(dimCheckRunnable)
+            dimOverlay.visibility = View.GONE
+            val lp = WindowManager.LayoutParams()
+            lp.copyFrom(window.attributes)
+            lp.screenBrightness = 1f
+            window.attributes = lp
+        }
         if (useWebView) {
             savedUrl = if (authSecret.isNotEmpty()) {
                 Uri.parse(savedUrl)
@@ -478,7 +517,10 @@ class MainActivity : AppCompatActivity() {
                 savedUrl
             }
 
-            handler.removeCallbacksAndMessages(null)
+            //handler.removeCallbacksAndMessages(null)
+            handler.removeCallbacks(imageRunnable)
+            handler.removeCallbacks(weatherRunnable)
+
             webView.webViewClient = object : WebViewClient() {
                 override fun shouldOverrideUrlLoading(
                     view: WebView?,
@@ -524,6 +566,7 @@ class MainActivity : AppCompatActivity() {
                 }
             )
         }
+
     }
 
     private fun onSettingsLoaded() {
@@ -557,17 +600,7 @@ class MainActivity : AppCompatActivity() {
         startImageTimer()
 
         if (serverSettings.showWeatherDescription) {
-            getWeather()
-            if (!isWeatherTimerRunning) {
-                isWeatherTimerRunning = true
-                handler.postDelayed(object : Runnable {
-                    override fun run() {
-                        getWeather()
-                        handler.postDelayed(this, 600000)
-                    }
-                }, (300000))
-            }
-
+            startWeatherTimer()
         }
     }
 
@@ -641,6 +674,74 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun screenDim(dim: Boolean) {
+        val lp = WindowManager.LayoutParams()
+        lp.copyFrom(window.attributes)
+        if (dim) {
+            lp.screenBrightness = 0.01f
+            window.attributes = lp
+            if (dimOverlay.visibility != View.VISIBLE) {
+                dimOverlay.apply {
+                    visibility = View.VISIBLE
+                    alpha = 0f
+                    /* isClickable = true
+                     setOnClickListener {
+                         screenDim(false)
+                     }*/
+                    stopImageTimer()
+                    stopWeatherTimer()
+                    animate()
+                        .alpha(0.99f)
+                        .setDuration(500L)
+                        .start()
+                }
+            }
+        } else {
+            lp.screenBrightness = 1f
+            window.attributes = lp
+            if (dimOverlay.visibility == View.VISIBLE) {
+                dimOverlay.animate()
+                    .alpha(0f)
+                    .setDuration(500L)
+                    /*.withStartAction {
+                        dimOverlay.isClickable = false
+                    }*/
+                    .withEndAction {
+                        dimOverlay.visibility = View.GONE
+                        loadSettings()
+                    }
+                    .start()
+            }
+        }
+    }
+
+    private fun checkDimTime() {
+        val prefs = getSharedPreferences("ImmichFramePrefs", MODE_PRIVATE)
+        val startHour = prefs.getInt("dimStartHour", 22)
+        val startMinute = prefs.getInt("dimStartMinute", 0)
+        val endHour = prefs.getInt("dimEndHour", 6)
+        val endMinute = prefs.getInt("dimEndMinute", 0)
+
+        val now = Calendar.getInstance()
+        val nowMinutes = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)
+        val startMinutes = startHour * 60 + startMinute
+        val endMinutes = endHour * 60 + endMinute
+
+        val shouldDim = if (startMinutes < endMinutes) {
+            // Same day
+            nowMinutes in startMinutes until endMinutes
+        } else {
+            // Spans midnight
+            nowMinutes >= startMinutes || nowMinutes < endMinutes
+        }
+        val isOverlayVisible = dimOverlay.visibility == View.VISIBLE
+        if (shouldDim && !isOverlayVisible) {
+            screenDim(true)
+        } else if (!shouldDim && isOverlayVisible) {
+            screenDim(false)
+        }
+    }
+
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
         if (hasFocus) {
@@ -656,6 +757,7 @@ class MainActivity : AppCompatActivity() {
             window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
         hideSystemUI()
+
     }
 
     override fun onDestroy() {

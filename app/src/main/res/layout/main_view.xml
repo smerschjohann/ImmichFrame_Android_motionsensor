@@ -87,5 +87,13 @@
             android:layout_marginEnd="8dp"
             android:background="@android:color/transparent"
             android:visibility="gone" />
+
+        <View
+            android:id="@+id/dimOverlay"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:alpha="0"
+            android:background="#000000"
+            android:visibility="gone" />
     </FrameLayout>
 </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>

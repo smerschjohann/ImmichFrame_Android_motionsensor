@@ -10,6 +10,7 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import java.util.Locale
 
 class SettingsActivity : AppCompatActivity() {
     private lateinit var editTextUrl: EditText
@@ -18,8 +19,11 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var chkKeepScreenOn: androidx.appcompat.widget.SwitchCompat
     private lateinit var chkBlurredBackground: androidx.appcompat.widget.SwitchCompat
     private lateinit var chkShowCurrentDate: androidx.appcompat.widget.SwitchCompat
+    private lateinit var chkScreenDim: androidx.appcompat.widget.SwitchCompat
     private lateinit var buttonAndroidSettings: Button
     private lateinit var editTextAuthSecret: EditText
+    private lateinit var editTextDimTimeRange: EditText
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.settings_view)
@@ -30,8 +34,10 @@ class SettingsActivity : AppCompatActivity() {
         chkKeepScreenOn = findViewById(R.id.chkKeepScreenOn)
         chkBlurredBackground = findViewById(R.id.chkBlurredBackground)
         chkShowCurrentDate = findViewById(R.id.chkShowCurrentDate)
+        chkScreenDim = findViewById(R.id.chkDimScreen)
         buttonAndroidSettings = findViewById(R.id.buttonAndroidSettings)
         editTextAuthSecret = findViewById(R.id.editTextAuthSecret)
+        editTextDimTimeRange = findViewById(R.id.editTextDimTimeRange)
 
         loadSettings()
 
@@ -49,7 +55,10 @@ class SettingsActivity : AppCompatActivity() {
         chkUseWebView.setOnCheckedChangeListener { _, isChecked ->
             additionalSettingsVisibility(isChecked)
         }
-
+        screenDimRangeVisibility(chkScreenDim.isChecked)
+        chkScreenDim.setOnCheckedChangeListener { _, isChecked ->
+            screenDimRangeVisibility(isChecked)
+        }
         buttonAndroidSettings.setOnClickListener {
             val intent = Intent(Settings.ACTION_SETTINGS)
             startActivity(intent)
@@ -68,44 +77,94 @@ class SettingsActivity : AppCompatActivity() {
         }
     }
 
+    private fun screenDimRangeVisibility(isChecked: Boolean) {
+        if (isChecked) {
+            editTextDimTimeRange.visibility = View.VISIBLE
+        } else {
+            editTextDimTimeRange.visibility = View.GONE
+        }
+    }
+
     private fun loadSettings() {
         val sharedPreferences = getSharedPreferences("ImmichFramePrefs", MODE_PRIVATE)
-        val savedUrl = sharedPreferences.getString("webview_url", getString(R.string.webview_url))
-        val blurredBackground = sharedPreferences.getBoolean("blurredBackground", true)
-        val showCurrentDate = sharedPreferences.getBoolean("showCurrentDate", true)
-        val useWebView = sharedPreferences.getBoolean("useWebView", true)
-        val keepScreenOn = sharedPreferences.getBoolean("keepScreenOn", true)
-        val authSecret = sharedPreferences.getString("authSecret", "") ?: ""
-        editTextUrl.setText(savedUrl)
-        editTextAuthSecret.setText(authSecret)
-        chkUseWebView.isChecked = useWebView
-        chkKeepScreenOn.isChecked = keepScreenOn
-        chkBlurredBackground.isChecked = blurredBackground
-        chkShowCurrentDate.isChecked = showCurrentDate
+        editTextUrl.setText(
+            sharedPreferences.getString(
+                "webview_url",
+                getString(R.string.webview_url)
+            )
+        )
+        editTextAuthSecret.setText(sharedPreferences.getString("authSecret", "") ?: "")
+        chkUseWebView.isChecked = sharedPreferences.getBoolean("useWebView", true)
+        chkKeepScreenOn.isChecked = sharedPreferences.getBoolean("keepScreenOn", true)
+        chkBlurredBackground.isChecked = sharedPreferences.getBoolean("blurredBackground", true)
+        chkShowCurrentDate.isChecked = sharedPreferences.getBoolean("showCurrentDate", true)
+        chkScreenDim.isChecked = sharedPreferences.getBoolean("screenDim", false)
+        editTextDimTimeRange.setText(
+            String.format(
+                Locale.US,
+                "%02d:%02d-%02d:%02d",
+                sharedPreferences.getInt("dimStartHour", 22),
+                sharedPreferences.getInt("dimStartMinute", 0),
+                sharedPreferences.getInt("dimEndHour", 7),
+                sharedPreferences.getInt("dimEndMinute", 0)
+            )
+        )
         editTextUrl.requestFocus()
     }
 
     private fun saveSettings(url: String, authSecret: String) {
-        val useWebView = chkUseWebView.isChecked
-        val keepScreenOn = chkKeepScreenOn.isChecked
-        val blurredBackground = chkBlurredBackground.isChecked
-        val showCurrentDate = chkShowCurrentDate.isChecked
         // Ensure trailing slash
         val fixedUrl = if (!url.endsWith("/")) "$url/" else url
         val sharedPreferences = getSharedPreferences("ImmichFramePrefs", MODE_PRIVATE)
         with(sharedPreferences.edit()) {
             putString("webview_url", fixedUrl)
-            putBoolean("useWebView", useWebView)
-            putBoolean("keepScreenOn", keepScreenOn)
-            putBoolean("blurredBackground", blurredBackground)
-            putBoolean("showCurrentDate", showCurrentDate)
+            putBoolean("useWebView", chkUseWebView.isChecked)
+            putBoolean("keepScreenOn", chkKeepScreenOn.isChecked)
+            putBoolean("blurredBackground", chkBlurredBackground.isChecked)
+            putBoolean("showCurrentDate", chkShowCurrentDate.isChecked)
+            putBoolean("screenDim", chkScreenDim.isChecked)
             putString("authSecret", authSecret)
             apply()
+        }
+        if (chkScreenDim.isChecked) {
+            saveDimTimeRange()
         }
         // Notify widget to update
         val intent = Intent(this, WidgetProvider::class.java).apply {
             action = AppWidgetManager.ACTION_APPWIDGET_UPDATE
         }
         sendBroadcast(intent)
+    }
+
+    private fun saveDimTimeRange() {
+        val timeRange = editTextDimTimeRange.text.toString().trim()
+
+        val regex = "^([01]?[0-9]|2[0-3]):([0-5][0-9])-([01]?[0-9]|2[0-3]):([0-5][0-9])$".toRegex()
+        if (timeRange.matches(regex)) {
+            val times = timeRange.split("-")
+            val startTime = times[0]
+            val endTime = times[1]
+
+            val startTimeParts = startTime.split(":")
+            val endTimeParts = endTime.split(":")
+
+            val startHour = startTimeParts[0].toInt()
+            val startMinute = startTimeParts[1].toInt()
+            val endHour = endTimeParts[0].toInt()
+            val endMinute = endTimeParts[1].toInt()
+
+            getSharedPreferences("ImmichFramePrefs", MODE_PRIVATE).edit()
+                .putInt("dimStartHour", startHour)
+                .putInt("dimStartMinute", startMinute)
+                .putInt("dimEndHour", endHour)
+                .putInt("dimEndMinute", endMinute)
+                .apply()
+        } else {
+            getSharedPreferences("ImmichFramePrefs", MODE_PRIVATE).edit()
+                .putBoolean("screenDim", false)
+                .apply()
+            Toast.makeText(this, "Invalid time format. Please use HH:mm-HH:mm.", Toast.LENGTH_LONG)
+                .show()
+        }
     }
 }
