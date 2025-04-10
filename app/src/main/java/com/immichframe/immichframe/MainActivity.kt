@@ -675,8 +675,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun screenDim(dim: Boolean) {
-        val lp = WindowManager.LayoutParams()
-        lp.copyFrom(window.attributes)
+        val lp = window.attributes
         if (dim) {
             lp.screenBrightness = 0.01f
             window.attributes = lp
@@ -684,10 +683,6 @@ class MainActivity : AppCompatActivity() {
                 dimOverlay.apply {
                     visibility = View.VISIBLE
                     alpha = 0f
-                    /* isClickable = true
-                     setOnClickListener {
-                         screenDim(false)
-                     }*/
                     stopImageTimer()
                     stopWeatherTimer()
                     animate()
@@ -697,15 +692,12 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         } else {
-            lp.screenBrightness = 1f
+            lp.screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
             window.attributes = lp
             if (dimOverlay.visibility == View.VISIBLE) {
                 dimOverlay.animate()
                     .alpha(0f)
                     .setDuration(500L)
-                    /*.withStartAction {
-                        dimOverlay.isClickable = false
-                    }*/
                     .withEndAction {
                         dimOverlay.visibility = View.GONE
                         loadSettings()
