@@ -10,12 +10,9 @@ import android.widget.RemoteViews
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import okhttp3.OkHttpClient
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
 import kotlinx.coroutines.withContext
 
 class WidgetProvider : AppWidgetProvider() {
@@ -80,7 +77,7 @@ class WidgetProvider : AppWidgetProvider() {
                 val authSecret = prefs.getString("authSecret", "") ?: ""
 
                 if (savedUrl.isNotEmpty()) {
-                    val retrofit = createRetrofit(savedUrl, authSecret)
+                    val retrofit = Helpers.createRetrofit(savedUrl, authSecret)
                     val apiService = retrofit.create(Helpers.ApiService::class.java)
 
                     CoroutineScope(Dispatchers.IO).launch {
@@ -130,30 +127,6 @@ class WidgetProvider : AppWidgetProvider() {
                     callback(null)
                 }
             })
-        }
-
-        private fun createRetrofit(baseUrl: String, authSecret: String): Retrofit {
-            val client = OkHttpClient.Builder()
-                .addInterceptor { chain ->
-                    val originalRequest = chain.request()
-
-                    val request = if (authSecret.isNotEmpty()) {
-                        originalRequest.newBuilder()
-                            .addHeader("Authorization", "Bearer $authSecret")
-                            .build()
-                    } else {
-                        originalRequest
-                    }
-
-                    chain.proceed(request)
-                }
-                .build()
-
-            return Retrofit.Builder()
-                .baseUrl(baseUrl)
-                .client(client)
-                .addConverterFactory(GsonConverterFactory.create())
-                .build()
         }
     }
 }

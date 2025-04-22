@@ -113,11 +113,9 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun saveSettings(url: String, authSecret: String) {
-        // Ensure trailing slash
-        val fixedUrl = if (!url.endsWith("/")) "$url/" else url
         val sharedPreferences = getSharedPreferences("ImmichFramePrefs", MODE_PRIVATE)
         with(sharedPreferences.edit()) {
-            putString("webview_url", fixedUrl)
+            putString("webview_url", url)
             putBoolean("useWebView", chkUseWebView.isChecked)
             putBoolean("keepScreenOn", chkKeepScreenOn.isChecked)
             putBoolean("blurredBackground", chkBlurredBackground.isChecked)

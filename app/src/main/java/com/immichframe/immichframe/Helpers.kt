@@ -9,6 +9,9 @@ import android.util.Base64
 import retrofit2.Call
 import retrofit2.http.GET
 import androidx.core.graphics.scale
+import okhttp3.OkHttpClient
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
 
 
 object Helpers {
@@ -164,6 +167,30 @@ object Helpers {
         @GET("api/Weather")
         fun getWeather(): Call<Weather>
     }
+    fun createRetrofit(baseUrl: String, authSecret: String): Retrofit {
+        val normalizedBaseUrl = if (!baseUrl.endsWith("/")) "$baseUrl/" else baseUrl
 
+        val client = OkHttpClient.Builder()
+            .addInterceptor { chain ->
+                val originalRequest = chain.request()
+
+                val request = if (authSecret.isNotEmpty()) {
+                    originalRequest.newBuilder()
+                        .addHeader("Authorization", "Bearer $authSecret")
+                        .build()
+                } else {
+                    originalRequest
+                }
+
+                chain.proceed(request)
+            }
+            .build()
+
+        return Retrofit.Builder()
+            .baseUrl(normalizedBaseUrl)
+            .client(client)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+    }
 
 }

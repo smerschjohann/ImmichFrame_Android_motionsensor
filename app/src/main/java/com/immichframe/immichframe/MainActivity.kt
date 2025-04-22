@@ -36,12 +36,10 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.WindowCompat
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
-import okhttp3.OkHttpClient
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
 import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -550,7 +548,7 @@ class MainActivity : AppCompatActivity() {
             webView.settings.domStorageEnabled = true
             webView.loadUrl(savedUrl)
         } else {
-            retrofit = createRetrofit(savedUrl, authSecret)
+            retrofit = Helpers.createRetrofit(savedUrl, authSecret)
             apiService = retrofit!!.create(Helpers.ApiService::class.java)
             getServerSettings(
                 onSuccess = { settings ->
@@ -603,31 +601,6 @@ class MainActivity : AppCompatActivity() {
             startWeatherTimer()
         }
     }
-
-    private fun createRetrofit(baseUrl: String, authSecret: String): Retrofit {
-        val client = OkHttpClient.Builder()
-            .addInterceptor { chain ->
-                val originalRequest = chain.request()
-
-                val request = if (authSecret.isNotEmpty()) {
-                    originalRequest.newBuilder()
-                        .addHeader("Authorization", "Bearer $authSecret")
-                        .build()
-                } else {
-                    originalRequest
-                }
-
-                chain.proceed(request)
-            }
-            .build()
-
-        return Retrofit.Builder()
-            .baseUrl(baseUrl)
-            .client(client)
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
-    }
-
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         if (event.action == KeyEvent.ACTION_DOWN) {
