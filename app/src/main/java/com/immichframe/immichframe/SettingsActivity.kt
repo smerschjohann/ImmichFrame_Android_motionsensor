@@ -23,6 +23,7 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var buttonAndroidSettings: Button
     private lateinit var editTextAuthSecret: EditText
     private lateinit var editTextDimTimeRange: EditText
+    private lateinit var wakeLock: EditText
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -38,6 +39,7 @@ class SettingsActivity : AppCompatActivity() {
         buttonAndroidSettings = findViewById(R.id.buttonAndroidSettings)
         editTextAuthSecret = findViewById(R.id.editTextAuthSecret)
         editTextDimTimeRange = findViewById(R.id.editTextDimTimeRange)
+        wakeLock = findViewById(R.id.wakeLock)
 
         loadSettings()
 
@@ -110,6 +112,7 @@ class SettingsActivity : AppCompatActivity() {
             )
         )
         editTextUrl.requestFocus()
+        wakeLock.setText(sharedPreferences.getInt("wakeLock", 15).toString())
     }
 
     private fun saveSettings(url: String, authSecret: String) {
@@ -122,6 +125,7 @@ class SettingsActivity : AppCompatActivity() {
             putBoolean("showCurrentDate", chkShowCurrentDate.isChecked)
             putBoolean("screenDim", chkScreenDim.isChecked)
             putString("authSecret", authSecret)
+            putInt("wakeLock", wakeLock.text.toString().toInt())
             apply()
         }
         if (chkScreenDim.isChecked) {

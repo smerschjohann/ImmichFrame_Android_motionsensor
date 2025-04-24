@@ -36,6 +36,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.WindowCompat
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+import com.immichframe.immichframe.sensors.ActivitySensor
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -69,6 +70,19 @@ class MainActivity : AppCompatActivity() {
     private var previousImage: Helpers.ImageResponse? = null
     private var currentImage: Helpers.ImageResponse? = null
     private var portraitCache: Helpers.ImageResponse? = null
+
+    private val sensorServiceRunnable = object : Runnable {
+        override fun run() {
+            handler?.removeCallbacks(this)
+            if(activitySensor != null) {
+                activitySensor?.checkSensors()
+            }
+            handler?.postDelayed(this, 1000L)
+        }
+    }
+
+    var activitySensor: ActivitySensor? = null
+
     private val imageRunnable = object : Runnable {
         override fun run() {
             if (isImageTimerRunning) {
@@ -160,7 +174,6 @@ class MainActivity : AppCompatActivity() {
             startImageTimer()
         }
         loadSettings()
-
     }
 
     private fun showImage(imageResponse: Helpers.ImageResponse) {
@@ -504,6 +517,7 @@ class MainActivity : AppCompatActivity() {
             lp.screenBrightness = 1f
             window.attributes = lp
         }
+        activitySensor = ActivitySensor(this, sharedPreferences.getInt("wakeLock", 15))
         if (useWebView) {
             savedUrl = if (authSecret.isNotEmpty()) {
                 Uri.parse(savedUrl)
@@ -596,6 +610,7 @@ class MainActivity : AppCompatActivity() {
 
         getNextImage()
         startImageTimer()
+        this.handler.post(sensorServiceRunnable)
 
         if (serverSettings.showWeatherDescription) {
             startWeatherTimer()
